@@ -1,0 +1,4215 @@
+// 搴旂敤绋嬪簭涓婚€昏�?
+// 瀵煎叆鑷姩鍒锋柊妯″潡
+let autoRefresh;
+try {
+  autoRefresh = require('./autoRefresh.js');
+} catch (error) {
+  console.error('鍔犺浇鑷姩鍒锋柊妯″潡澶辫�?', error);
+  // 鍒涘缓涓€涓┖鐨勬ā鎷熸ā鍧楋紝浠ラ槻妯″潡鍔犺浇澶辫触
+  autoRefresh = {
+    initAutoRefresh: () => {},
+    startAutoRefresh: () => {},
+    stopAutoRefresh: () => {},
+    toggleAutoRefresh: () => {},
+    updateLastRefreshTime: () => {}
+  };
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const app = document.getElementById('app');
+  
+  // 鍒涘缓搴旂敤绋嬪簭甯冨眬
+  createAppLayout(app);
+  
+  // 鍒濆鍖栧鑸簨锟?  initNavEvents();
+  
+  // 榛樿鍔犺浇鐔婄尗鍔ㄦ€侀〉锟?  // 纭繚UI鐘舵€佷笌鍔犺浇鐨勯〉闈竴�?  const newsNavItem = document.querySelector('.main-nav li[data-page="news"]');
+  if (newsNavItem) {
+    newsNavItem.classList.add('active');
+  }
+  loadPandaNews();
+});
+
+// 鍒涘缓搴旂敤绋嬪簭甯冨眬
+function createAppLayout(container) {
+  container.innerHTML = `
+    <div class="app-container">
+      <div class="custom-titlebar">
+        <div class="titlebar-drag-region">
+          <div class="titlebar-icon">
+            <img src="./assets/panda_logo1.png" alt="宸濆皬鐔婄尗" class="titlebar-logo">
+          </div>
+          <div class="titlebar-title">宸濆皬鐔婄尗 - 鍏ㄧ悆鐔婄尗鍔ㄦ€佹煡鐪嬪櫒</div>
+        </div>
+        <div class="titlebar-controls">
+          <button class="titlebar-button" id="minimize-btn" title="鏈€灏忓�?>
+            <svg width="12" height="12" viewBox="0 0 12 12">
+              <rect x="1" y="6" width="10" height="1" fill="currentColor" />
+            </svg>
+          </button>
+          <button class="titlebar-button" id="maximize-btn" title="鏈€澶у寲">
+            <svg width="12" height="12" viewBox="0 0 12 12">
+              <rect x="1.5" y="1.5" width="9" height="9" stroke="currentColor" fill="none" stroke-width="1.25"/>
+            </svg>
+          </button>
+          <button class="titlebar-button close-button" id="close-btn" title="鍏抽�?>
+            <svg width="12" height="12" viewBox="0 0 12 12">
+              <line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" stroke-width="1.5" />
+              <line x1="1" y1="11" x2="11" y2="1" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <header class="app-header">
+        <div class="logo-container">
+          <div class="custom-logo">
+            <img src="./assets/panda_logo1.png" alt="宸濆皬鐔婄尗" class="app-logo-image">
+            <div class="logo-overlay">鐔婄�?/div>
+          </div>
+          <h1>宸濆皬鐔婄尗</h1>
+        </div>
+        <nav class="main-nav">
+          <ul>
+            <li data-page="map">鐔婄尗鍦板浘</li>
+            <li data-page="news" class="active">鐔婄尗鍔拷?/li>
+            <li data-page="knowledge">鐔婄尗鐭ヨ瘑</li>
+            <li data-page="live">瀹炴椂鐩戞帶</li>
+            <li data-page="settings">杞欢璁剧疆</li>
+          </ul>
+        </nav>
+      </header>
+      <main class="app-content">
+        <div id="content-container" class="content-container">
+          <!-- 鍐呭灏嗗姩鎬佸姞杞藉埌杩欓�?-->
+          <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>姝ｅ湪鍔犺浇鐔婄尗鏁版嵁...</p>
+          </div>
+        </div>
+      </main>
+    </div>
+  `;
+  
+  // 娣诲姞鏍囬鏍忔帶鍒舵寜閽簨锟?  const api = getAPI();
+  if (api && api.minimizeWindow) {
+    document.getElementById('minimize-btn').addEventListener('click', () => {
+      api.minimizeWindow();
+    });
+    
+    document.getElementById('maximize-btn').addEventListener('click', async () => {
+      const isMaximized = await api.maximizeWindow();
+      const maximizeBtn = document.getElementById('maximize-btn');
+      
+      // 鏍规嵁绐楀彛鐘舵€佹洿鏂版寜閽浘�?      if (isMaximized) {
+        maximizeBtn.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 12 12">
+            <rect x="1.5" y="1.5" width="7" height="7" stroke="currentColor" fill="none" stroke-width="1.25"/>
+            <rect x="3.5" y="3.5" width="7" height="7" stroke="currentColor" fill="none" stroke-width="1.25"/>
+          </svg>
+        `;
+        maximizeBtn.setAttribute('title', '杩樺�?);
+      } else {
+        maximizeBtn.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 12 12">
+            <rect x="1.5" y="1.5" width="9" height="9" stroke="currentColor" fill="none" stroke-width="1.25"/>
+          </svg>
+        `;
+        maximizeBtn.setAttribute('title', '鏈€澶у寲');
+      }
+    });
+    
+    document.getElementById('close-btn').addEventListener('click', () => {
+      api.closeWindow();
+    });
+  } else {
+    // 濡傛灉涓嶅湪Electron鐜涓紝闅愯棌鑷畾涔夋爣棰樻爮
+    const titlebar = document.querySelector('.custom-titlebar');
+    if (titlebar) {
+      titlebar.style.display = 'none';
+    }
+  }
+}
+
+// 鍒濆鍖栧鑸簨锟?function initNavEvents() {
+  const navItems = document.querySelectorAll('.main-nav li');
+  
+  navItems.forEach(item => {
+    item.addEventListener('click', function() {
+      // 鑾峰彇褰撳墠椤甸潰鍜岀洰鏍囬〉锟?      const currentActivePage = document.querySelector('.main-nav li.active');
+      const currentPage = currentActivePage ? currentActivePage.getAttribute('data-page') : null;
+      const targetPage = this.getAttribute('data-page');
+      
+      console.log(`椤甸潰鍒囨崲: �?${currentPage} �?${targetPage}`);
+      
+      // 濡傛灉浠庣唺鐚姩鎬侀〉闈㈠垏鎹㈠埌鍏朵粬椤甸潰锛屾鏌ユ槸鍚﹂渶瑕佹殏鍋滆嚜鍔ㄥ埛锟?      if (currentPage === 'news' && targetPage !== 'news' && typeof autoRefresh !== 'undefined') {
+        // 涓嶅仠姝㈣嚜鍔ㄥ埛鏂帮紝璁╅〉闈㈡鏌ラ€昏緫澶勭悊
+        console.log('浠庣唺鐚姩鎬侀〉闈㈠垏鎹㈠埌鍏朵粬椤甸�?);
+      }
+      
+      // 绉婚櫎鎵€鏈夋椿鍔ㄧ姸锟?      navItems.forEach(nav => nav.classList.remove('active'));
+      
+      // 娣诲姞褰撳墠娲诲姩鐘讹拷?      this.classList.add('active');
+      
+      // 鏍规嵁閫夋嫨鐨勯〉闈㈠姞杞藉唴锟?      const page = this.getAttribute('data-page');
+      switch (page) {
+        case 'map':
+          loadPandaMap();
+          break;
+        case 'news':
+          loadPandaNews();
+          break;
+        case 'knowledge':
+          loadPandaKnowledge();
+          break;
+        case 'live':
+          loadPandaLive();
+          break;
+        case 'settings':
+          loadAppSettings();
+          break;
+      }
+    });
+  });
+}
+
+// 鑾峰彇API瀹炰�?
+function getAPI() {
+  // 妫€鏌ユ槸鍚﹀湪Electron鐜锟?  if (window.pandaAPI) {
+    return window.pandaAPI;
+  } else if (window.api) {
+    // 娴忚鍣ㄧ幆澧冧腑鐨勬ā鎷烝PI
+    return window.api;
+  } else {
+    console.error('鏈壘鍒癆PI鏈嶅�?);
+    return null;
+  }
+}
+
+// 瀛樺偍鍏ㄩ儴鏂伴椈鏁版嵁
+let allPandaNews = [];
+let currentDisplayedNews = 0;
+const NEWS_PER_PAGE = 10;
+const MAX_NEWS = 30;
+
+// 鏍规嵁鏃ユ湡瀵规柊闂昏繘琛屾帓搴忥紙浠庢柊鍒版棫�?function sortNewsByDate(newsArray) {
+  return [...newsArray].sort((a, b) => {
+    // 浠庢棩鏈熷瓧绗︿覆涓彁鍙栧勾銆佹湀銆佹�?
+    const getDateParts = (dateStr) => {
+      if (!dateStr) return { year: 2000, month: 1, day: 1 };
+      
+      // 鍖归�?YYYY骞碝M鏈圖D�?鏍煎�?
+      const match = dateStr.match(/(\d{4})�?\d{1,2})�?\d{1,2})�?);
+      if (match) {
+        return {
+          year: parseInt(match[1]),
+          month: parseInt(match[2]),
+          day: parseInt(match[3])
+        };
+      }
+      
+      // 灏濊瘯鍖归厤鍏朵粬鍙兘鐨勬棩鏈熸牸�?      const altMatch = dateStr.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+      if (altMatch) {
+        return {
+          year: parseInt(altMatch[1]),
+          month: parseInt(altMatch[2]),
+          day: parseInt(altMatch[3])
+        };
+      }
+      
+      // 濡傛灉鏃犳硶瑙ｆ瀽鏃ユ湡锛岃繑鍥炰竴涓緢鏃╃殑鏃ユ�?
+      return { year: 2000, month: 1, day: 1 };
+    };
+    
+    const dateA = getDateParts(a.date);
+    const dateB = getDateParts(b.date);
+    
+    // 姣旇緝骞翠唤
+    if (dateA.year !== dateB.year) {
+      return dateB.year - dateA.year;
+    }
+    // 骞翠唤鐩稿悓锛屾瘮杈冩湀�?    if (dateA.month !== dateB.month) {
+      return dateB.month - dateA.month;
+    }
+    // 骞存湀鐩稿悓锛屾瘮杈冩�?
+    return dateB.day - dateA.day;
+  });
+}
+
+// 鍔犺浇鐔婄尗鍔ㄦ€侀〉锟?async function loadPandaNews() {
+  console.log('loadPandaNews琚皟锟?);
+  
+  // 妫€鏌ュ綋鍓嶆縺娲荤殑椤甸潰鏄惁鏄唺鐚姩鎬侀〉锟?  const activeNavItem = document.querySelector('.main-nav li.active');
+  const currentPage = activeNavItem ? activeNavItem.getAttribute('data-page') : null;
+  console.log('褰撳墠椤甸潰:', currentPage);
+  
+  // 濡傛灉褰撳墠涓嶆槸鍦ㄧ唺鐚姩鎬侀〉闈紝涓斾笉鏄垵濮嬪姞杞斤紝鍒欏彧鑾峰彇鏁版嵁浣嗕笉鏇存柊UI
+  const isInitialLoad = !document.querySelector('.page-container');
+  
+  // 妫€鏌ユ槸鍚︽槸鑷姩鍒锋柊瑙﹀彂鐨勮皟�?  const isAutoRefreshActive = typeof autoRefresh !== 'undefined' && 
+                             autoRefresh.isAutoRefreshActive && 
+                             autoRefresh.isAutoRefreshActive();
+  
+  // 濡傛灉涓嶆槸鐔婄尗鍔ㄦ€侀〉闈紝鍒欏彧鏇存柊鏁版嵁锛屼笉鍒锋柊UI
+  if (currentPage !== 'news' && !isInitialLoad) {
+    console.log('褰撳墠涓嶅湪鐔婄尗鍔ㄦ€侀〉闈紝鍙洿鏂版暟鎹笉鍒锋柊UI');
+    try {
+      // 鍙幏鍙栨暟鎹紝涓嶆洿鏂癠I
+      const api = getAPI();
+      if (api) {
+        const newsData = await api.getLatestPandaNews();
+        if (newsData && newsData.length > 0) {
+          // 鏇存柊鍏ㄥ眬鏁版嵁浣嗕笉娓叉�?
+          allPandaNews = sortNewsByDate(newsData);
+        }
+      }
+    } catch (error) {
+      console.error('鍚庡彴鏇存柊鐔婄尗鏂伴椈鏁版嵁澶辫触:', error);
+    }
+    return; // 鎻愬墠杩斿洖锛屼笉鎵цUI鏇存�?
+  }
+  
+  // 鍐嶆纭褰撳墠椤甸潰鏄唺鐚姩鎬侀〉锟?  if (currentPage !== 'news' && !isInitialLoad) {
+    console.log('褰撳墠涓嶅湪鐔婄尗鍔ㄦ€侀〉闈紝璺宠繃UI鏇存�?);
+    return;
+  }
+  
+  const contentContainer = document.getElementById('content-container');
+  
+  // 鏄剧ず鍔犺浇鐘讹�?  contentContainer.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p>姝ｅ湪鍔犺浇鐔婄尗鍔拷?..</p></div>';
+  
+  try {
+    // 鑾峰彇API瀹炰�?
+    const api = getAPI();
+    if (!api) {
+      throw new Error('API鏈嶅姟涓嶅彲�?);
+    }
+    
+    // 鑾峰彇鏂伴椈鏁版�?
+    const newsData = await api.getLatestPandaNews();
+    
+    if (!newsData || newsData.length === 0) {
+      throw new Error('鏈幏鍙栧埌鐔婄尗鏂伴椈鏁版�?);
+    }
+    
+    // 瀵规柊闂昏繘琛屾帓搴忥紝纭繚鏈€鏂扮殑鏂伴椈鍦ㄦ渶涓婇�?
+    const sortedNewsData = sortNewsByDate(newsData);
+    
+    // 淇濆瓨鎵€鏈夋柊闂绘暟鎹埌鍏ㄥ眬鍙橀�?
+    allPandaNews = sortedNewsData;
+    currentDisplayedNews = 0;
+    
+    // 鏈€鍚庝竴娆℃鏌ュ綋鍓嶉〉锟?    const finalCheck = document.querySelector('.main-nav li.active');
+    const finalPage = finalCheck ? finalCheck.getAttribute('data-page') : null;
+    if (finalPage !== 'news') {
+      console.log('UI娓叉煋鍓嶆渶缁堟鏌ワ細褰撳墠涓嶅湪鐔婄尗鍔ㄦ€侀〉闈紝璺宠繃UI娓叉�?);
+      return;
+    }
+    
+    // 鍒濆娓叉煋棣栭〉鏂伴椈锛堝�?0鏉★�?
+    renderPandaNews(contentContainer);
+    
+    // 鍒濆鍖栬嚜鍔ㄦ洿鏂板姛�?    if (typeof autoRefresh !== 'undefined' && autoRefresh.initAutoRefresh) {
+      const newsPageContainer = document.querySelector('.news-page');
+      if (newsPageContainer) {
+        // 鍦ㄩ〉闈㈤《閮ㄦ坊鍔犲埛鏂版帶浠跺锟?        const refreshControlsContainer = document.createElement('div');
+        refreshControlsContainer.className = 'refresh-controls';
+        refreshControlsContainer.innerHTML = `
+          <div class="refresh-status">
+            <span>鏈€鍚庢洿鏂版椂�? </span>
+            <span id="last-refresh-time">${new Date().toLocaleString('zh-CN', { hour12: false })}</span>
+          </div>
+          <div class="refresh-actions">
+            <div class="auto-refresh-toggle">
+              <input type="checkbox" id="auto-refresh-toggle-news">
+              <label for="auto-refresh-toggle-news">鑷姩鏇存柊</label>
+            </div>
+            <select class="refresh-interval" id="refresh-interval-news">
+              <option value="30000">30�?/option>
+              <option value="60000" selected>1鍒嗛�?/option>
+              <option value="300000">5鍒嗛�?/option>
+              <option value="600000">10鍒嗛�?/option>
+              <option value="1800000">30鍒嗛�?/option>
+            </select>
+          </div>
+        `;
+        
+        // 灏嗗埛鏂版帶浠舵彃鍏ュ埌鏍囬涓嬫柟
+        const newsTitle = newsPageContainer.querySelector('h2');
+        if (newsTitle && newsTitle.nextSibling) {
+          newsPageContainer.insertBefore(refreshControlsContainer, newsTitle.nextSibling);
+        } else {
+          newsPageContainer.insertBefore(refreshControlsContainer, newsPageContainer.firstChild.nextSibling);
+        }
+        
+        // 鍒濆鍖栬嚜鍔ㄦ洿锟?        autoRefresh.initAutoRefresh(newsPageContainer, loadPandaNews, 60000);
+        
+        // 娣诲姞鍒锋柊闂撮殧閫夋嫨浜嬩�?
+        const refreshIntervalSelect = document.getElementById('refresh-interval-news');
+        if (refreshIntervalSelect) {
+          refreshIntervalSelect.addEventListener('change', function() {
+            const interval = parseInt(this.value);
+            if (autoRefresh.toggleAutoRefresh) {
+              // 濡傛灉鑷姩鏇存柊宸插惎鐢紝鍒欓噸鏂板惎鍔ㄤ互搴旂敤鏂伴棿�?              const autoRefreshToggle = document.getElementById('auto-refresh-toggle-news');
+              if (autoRefreshToggle && autoRefreshToggle.checked) {
+                autoRefresh.stopAutoRefresh();
+                autoRefresh.startAutoRefresh(loadPandaNews, interval);
+              }
+            }
+          });
+        }
+        
+        // 娣诲姞鑷姩鏇存柊寮€鍏充簨�?        const autoRefreshToggle = document.getElementById('auto-refresh-toggle-news');
+        if (autoRefreshToggle) {
+          autoRefreshToggle.addEventListener('change', function() {
+            const interval = parseInt(document.getElementById('refresh-interval-news').value);
+            if (this.checked) {
+              autoRefresh.startAutoRefresh(loadPandaNews, interval);
+            } else {
+              autoRefresh.stopAutoRefresh();
+            }
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('鍔犺浇鐔婄尗鏂伴椈澶辫触:', error);
+    contentContainer.innerHTML = `
+      <div class="error-container">
+        <p>鍔犺浇鐔婄尗鏂伴椈澶辫触锛岃绋嶅悗鍐嶈瘯锟?/p>
+        <p class="error-details">${error.message}</p>
+        <button id="retry-news" class="retry-button">閲嶈�?/button>
+      </div>
+    `;
+    
+    // 娣诲姞閲嶈瘯鎸夐挳鐐瑰嚮浜嬩�?
+    const retryButton = document.getElementById('retry-news');
+    if (retryButton) {
+      retryButton.addEventListener('click', () => {
+        loadPandaNews();
+      });
+    }
+  }
+}
+
+// 娓叉煋鐔婄尗鏂伴椈鍐呭
+function renderPandaNews(container) {
+  // 鍒濆鍖栨柊闂籋TML
+  let newsHtml = '';
+  
+  // 棣栨鍔犺浇鏃跺垱寤洪〉闈㈠�?  if (currentDisplayedNews === 0) {
+    newsHtml = `
+      <div class="page-container news-page">
+        <h2>鍏ㄧ悆鐔婄尗鍔�?/h2>
+        <p class="news-update-time">鏈€鍚庢洿鏂版椂�? ${new Date().toLocaleString('zh-CN', { hour12: false })}</p>
+        <div class="news-container" id="news-container">
+    `;
+  } else {
+    // 鑾峰彇鐜版湁鏂伴椈瀹瑰�?
+    const newsContainer = document.getElementById('news-container');
+    if (newsContainer) {
+      newsContainer.innerHTML = '';
+      container = newsContainer;
+    }
+    
+    // 鏇存柊鏈€鍚庡埛鏂版椂锟?    const lastRefreshTime = document.getElementById('last-refresh-time');
+    if (lastRefreshTime) {
+      lastRefreshTime.textContent = new Date().toLocaleString('zh-CN', { hour12: false });
+    }
+    
+    const newsUpdateTime = document.querySelector('.news-update-time');
+    if (newsUpdateTime) {
+      newsUpdateTime.textContent = `鏈€鍚庢洿鏂版椂�? ${new Date().toLocaleString('zh-CN', { hour12: false })}`;
+    }
+  }
+  
+  // 璁＄畻瑕佹樉绀虹殑鏂伴椈鑼冨洿
+  const endIndex = Math.min(currentDisplayedNews + NEWS_PER_PAGE, allPandaNews.length, MAX_NEWS);
+  
+  // 娣诲姞鏂伴椈鍐呭�?
+  for (let i = 0; i < endIndex; i++) {
+    const news = allPandaNews[i];
+    
+    // 妫€鏌ユ柊闂绘暟鎹畬鏁达拷?    if (!news.title || !news.description) {
+      console.warn('璺宠繃涓嶅畬鏁寸殑鏂伴椈鏁版�?', news);
+      continue;
+    }
+    
+    // 澶勭悊鍙兘缂哄け鐨勫浘�?    const imageUrl = news.image || './assets/panda_logo1.png';
+    
+    // 澶勭悊鍙兘缂哄け鐨勯摼�?    const newsUrl = news.url || '#';
+    
+    // 澶勭悊鍙兘缂哄け鐨勬潵婧恖ogo
+    const sourceLogoUrl = news.sourceLogo || './assets/panda_logo1.png';
+    
+    // 鐢熸垚鏂伴椈HTML
+    const newsItemHtml = `
+      <article class="news-item">
+        <div class="news-content">
+          <div class="news-header">
+            <h3>${news.title}</h3>
+            <div class="source-logo-container">
+              <img src="${sourceLogoUrl}" alt="${news.source || '鏈煡鏉ユ簮'}" class="source-logo" onerror="this.src='./assets/panda_logo1.png'">
+            </div>
+          </div>
+          <div class="news-meta">
+            <p class="news-date">${news.date || '鏃ユ湡鏈煡'}</p>
+            <p class="news-source">鏉ユ�? ${news.source || '鏈煡鏉ユ簮'}</p>
+          </div>
+          <p class="news-description">${news.description}</p>
+          <a href="${newsUrl}" class="read-more" target="_blank" data-url="${newsUrl}">闃呰鏇村</a>
+        </div>
+      </article>
+    `;
+    
+    // 棣栨鍔犺浇鏃惰拷鍔犲埌HTML瀛楃涓诧紝鍚﹀垯鐩存帴娣诲姞鍒板�?    if (currentDisplayedNews === 0) {
+      newsHtml += newsItemHtml;
+    } else {
+      container.innerHTML += newsItemHtml;
+    }
+  }
+  
+  // 鏇存柊褰撳墠鏄剧ず鐨勬柊闂绘暟锟?  currentDisplayedNews = endIndex;
+  
+  // 棣栨鍔犺浇鏃跺畬鎴怘TML骞舵洿鏂板唴�?  if (currentDisplayedNews <= NEWS_PER_PAGE) {
+    // 娣诲姞鍔犺浇鏇村鎸夐挳鍜屽埛鏂版寜�?    newsHtml += `
+        </div>
+        <div class="news-actions">
+          <button id="load-more-news" class="load-more-button" ${currentDisplayedNews >= Math.min(allPandaNews.length, MAX_NEWS) ? 'style="display:none;"' : ''}>鍔犺浇鏇村</button>
+          <button id="refresh-news" class="refresh-button">
+            <span class="refresh-icon"></span>
+            鍒锋柊鏂伴椈
+          </button>
+        </div>
+      </div>
+    `;
+    
+    // 鏇存柊鍐呭
+    container.innerHTML = newsHtml;
+    
+    // 娣诲姞鍔犺浇鏇村鎸夐挳鐐瑰嚮浜嬩欢
+    const loadMoreButton = document.getElementById('load-more-news');
+    if (loadMoreButton) {
+      loadMoreButton.addEventListener('click', loadMoreNews);
+    }
+    
+    // 娣诲姞鍒锋柊鎸夐挳鐐瑰嚮浜嬩�?
+    const refreshButton = document.getElementById('refresh-news');
+    if (refreshButton) {
+      refreshButton.addEventListener('click', () => {
+        // 娣诲姞鍒锋柊鍔ㄧ�?
+        refreshButton.classList.add('refreshing');
+        
+        // 鎵ц鍒锋�?
+        loadPandaNews().finally(() => {
+          // 绉婚櫎鍒锋柊鍔ㄧ�?
+          refreshButton.classList.remove('refreshing');
+        });
+      });
+    }
+  } else {
+    // 鏇存柊鍔犺浇鏇村鎸夐挳鐘讹�?    const loadMoreButton = document.getElementById('load-more-news');
+    if (loadMoreButton) {
+      if (currentDisplayedNews >= Math.min(allPandaNews.length, MAX_NEWS)) {
+        loadMoreButton.style.display = 'none';
+      } else {
+        loadMoreButton.style.display = 'block';
+      }
+    }
+  }
+  
+  // 娣诲姞闃呰鏇村鐐瑰嚮浜嬩�?
+  const readMoreLinks = document.querySelectorAll('.read-more');
+  readMoreLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const url = this.getAttribute('data-url');
+      if (!url || url === '#') {
+        console.log('鏂伴椈閾炬帴鏃犳�?);
+        return;
+      }
+      
+      // 浣跨敤Electron鐨剆hell.openExternal鎵撳紑閾炬帴
+      if (window.pandaAPI && window.pandaAPI.openExternalLink) {
+        window.pandaAPI.openExternalLink(url)
+          .then(result => {
+            console.log('閾炬帴鎵撳紑缁撴�?', result);
+          })
+          .catch(error => {
+            console.error('鎵撳紑閾炬帴鏃跺嚭锟?', error);
+            // 澶辫触鏃跺洖閫€鍒版祻瑙堝櫒榛樿琛屼负
+            window.open(url, '_blank');
+          });
+      } else {
+        // 鍦ㄦ祻瑙堝櫒鐜涓洿鎺ユ墦寮€閾炬帴
+        window.open(url, '_blank');
+      }
+    });
+  });
+}
+
+// 鍔犺浇鏇村鏂伴�?
+function loadMoreNews() {
+  // 濡傛灉宸茬粡鏄剧ず浜嗗叏閮ㄦ柊闂绘垨杈惧埌鏈€澶ф樉绀烘暟閲忥紝鍒欎笉鍐嶅姞锟?  if (currentDisplayedNews >= Math.min(allPandaNews.length, MAX_NEWS)) {
+    console.log('宸叉樉绀哄叏閮ㄥ彲鍔犺浇鐨勬柊锟?);
+    return;
+  }
+  
+  // 鑾峰彇鏂伴椈瀹瑰�?
+  const newsContainer = document.getElementById('news-container');
+  if (!newsContainer) {
+    console.error('鏈壘鍒版柊闂诲锟?);
+    return;
+  }
+  
+  // 娓叉煋鏇村鏂伴�?
+  renderPandaNews(newsContainer);
+}
+
+// 鍔犺浇鐔婄尗鐭ヨ瘑椤甸潰
+async function loadPandaKnowledge() {
+  const contentContainer = document.getElementById('content-container');
+  
+  // 鏄剧ず鍔犺浇鐘讹�?  contentContainer.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p>姝ｅ湪鍔犺浇鐔婄尗鐭ヨ瘑...</p></div>';
+  
+  try {
+    // 鑾峰彇API瀹炰�?
+    const api = getAPI();
+    if (!api) {
+      throw new Error('API鏈嶅姟涓嶅彲�?);
+    }
+    
+    // 鑾峰彇鐭ヨ瘑鏁版�?
+    const knowledgeData = await api.getPandaKnowledge();
+    
+    // 鏋勫缓鐭ヨ瘑HTML
+    let knowledgeHtml = `
+      <div class="page-container knowledge-page">
+        <h2>鐔婄尗鐧剧鐭ヨ�?/h2>
+        
+        <!-- 娣诲姞鍒嗙被瀵艰�?-->
+        <div class="knowledge-nav">
+          <ul>
+            <li><a href="#basic-info" class="knowledge-nav-item active">鍩烘湰鐭ヨ瘑</a></li>
+            <li><a href="#panda-culture" class="knowledge-nav-item">鐔婄尗鏂囧寲</a></li>
+            <li><a href="#panda-science" class="knowledge-nav-item">鐔婄尗绉戞櫘</a></li>
+            <li><a href="#conservation" class="knowledge-nav-item">淇濇姢鐜扮姸</a></li>
+            <li><a href="#research" class="knowledge-nav-item">鐮旂┒鎴愬氨</a></li>
+          </ul>
+        </div>
+    `;
+    
+    // 鍩烘湰淇℃伅閮ㄥ�?
+    knowledgeHtml += `
+      <div id="basic-info" class="knowledge-section">
+        <h3>${knowledgeData.basicInfo.title}</h3>
+        <div class="knowledge-content">
+          <img src="./assets/鐔婄�?jpg" alt="澶х唺�? class="knowledge-image" onerror="this.src='./assets/panda_logo1.png'">
+          <div class="knowledge-text">
+            ${knowledgeData.basicInfo.content.map(text => `<p>${text}</p>`).join('')}
+            <p>澶х唺鐚槸涓栫晫涓婃渶鍙楁杩庣殑婵掑嵄鍔ㄧ墿涔嬩竴锛屾垚骞村ぇ鐔婄尗浣撻暱�?.2-1.5绫筹紝浣撻噸�?00-150鍗冨厠銆傚畠浠嫢鏈夋爣蹇楁€х殑榛戠櫧姣涜壊锛岄粦鑹查儴鍒嗗寘鎷溂鐫涘懆鍥淬€佽€虫湹銆侀蓟瀛愩€佽偐鑶€鍜屽洓鑲紝鍏朵綑閮ㄥ垎涓虹櫧鑹诧�?/p>
+            <p>澶х唺鐚嫢鏈夌嫭鐗圭�?绗叚锟?锛堣厱楠ㄦ紨鍙樿€屾潵鐨勬媷鎸囷級锛岃繖浣垮畠浠兘澶熻交鏉炬彙浣忕瀛愩€傚畠浠殑娑堝寲绯荤粺铏界劧灞炰簬椋熻倝鍔ㄧ墿锛屼絾宸茬粡閫傚簲浜嗕互绔瑰瓙涓轰富鐨勯ギ椋熶範鎯�?/p>
+            <p>鐩墠锛岄噹鐢熷ぇ鐔婄尗涓昏鍒嗗竷鍦ㄤ腑鍥藉洓宸濈渷锛堢害1,200鍙級銆侀檿瑗跨渷锛堢�?00澶氬彧锛夊拰鐢樿們鐪侊紙�?00澶氬彧锛夌殑灞卞尯锛屾€绘暟宸叉帴锟?,900鍙€傚ぇ鐔婄尗淇濇姢鍖烘€婚潰绉揪鍒扮害260涓囧叕椤凤拷?/p>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // 鐢熸椿涔犳€ч儴锟?    knowledgeHtml += `
+      <div class="knowledge-section">
+        <h3>${knowledgeData.habits.title}</h3>
+        <div class="knowledge-list">
+          <ul>
+            ${knowledgeData.habits.items.map(item => `
+              <li><strong>${item.subtitle}�?/strong>${item.content}</li>
+            `).join('')}
+            <li><strong>棰嗗湴琛屼负�?/strong>澶х唺鐚槸鐙眳鍔ㄧ墿锛屾瘡鍙ぇ鐔婄尗閮芥湁鑷繁鐨勯鍦般€傚畠浠€氳繃鍦ㄦ爲涓婄暀涓嬫皵鍛虫爣璁般€佸埉鎿︽爲鐨瓑鏂瑰紡鍒掑畾棰嗗湴鑼冨洿銆備竴鍙垚骞撮泟鎬уぇ鐔婄尗鐨勯鍦板ぇ绾︿负3-7骞虫柟鍏噷锛岃€岄泴鎬х殑棰嗗湴鍒欑浉瀵硅緝灏忥拷?/li>
+            <li><strong>浜ゆ祦鏂瑰紡�?/strong>澶х唺鐚€氳繃澶氱澹伴煶杩涜浜ゆ祦锛屽寘鎷福鍙€佸惣鍙拰鍚卞惐澹扮瓑銆傚湪绻佹畺瀛ｈ妭锛屽畠浠殑鍙０灏や负鏄庢樉銆傛澶栵紝瀹冧滑杩橀€氳繃姘斿懗鏍囪杩涜闂存帴浜ゆ祦�?/li>
+            <li><strong>娲诲姩瑙勫緥�?/strong>澶х唺鐚竴澶╀腑锟?0-16灏忔椂鐢ㄤ簬瑙呴锛屽叾浣欐椂闂村鐢ㄤ簬浼戞伅銆傚畠浠棦鏄樇琛屾€т篃鏄琛屾€у姩鐗╋紝浣嗗湪浜虹被娲诲姩棰戠箒鐨勫湴鍖猴紝瀹冧滑鏇村€惧悜浜庡湪澶滈棿娲诲姩锟?/li>
+            <li><strong>浣撴俯璋冭妭�?/strong>澶х唺鐚枩娆㈠噳鐖界殑鐜锛岄€傚疁娓╁害�?7-25鈩冦€傚湪澶忓锛屽畠浠細绉诲姩鍒版捣鎷旇緝楂樼殑鍦板尯閬挎殤锛涘啲瀛ｅ垯绉诲姩鍒拌緝浣庢捣鎷斿湴鍖猴拷?/li>
+          </ul>
+        </div>
+      </div>
+    `;
+    
+    // 鏂板锛氱唺鐚枃鍖栭儴�?    knowledgeHtml += `
+      <div id="panda-culture" class="knowledge-section">
+        <h3>鐔婄尗鏂囧寲</h3>
+        <div class="knowledge-content">
+          <div class="knowledge-text">
+            <p>澶х唺鐚綔涓轰腑鍥界殑鍥藉疂锛屽湪涓崕鏂囧寲涓嫢鏈夋繁鍘氱殑鍘嗗彶搴曡暣鍜屼赴瀵岀殑鏂囧寲鍐呮兜锛屼粠鍙や唬鏂囩尞璁拌浇鍒扮幇浠ｆ祦琛屾枃鍖栵紝鐔婄尗褰㈣薄璐┛浜嗕腑鍗庢枃鏄庣殑鍙戝睍鍘嗙▼锟?/p>
+          </div>
+        </div>
+        
+        <h4>鍘嗗彶璁拌浇涓庢枃鍖栨笂�?/h4>
+        <p>澶х唺鐚湪涓浗鍙や唬鏂囩尞涓棭鏈夎杞姐€傝タ姹夋椂鏈熺殑銆婂皵闆呫€嬩腑绉颁箣�?�?锛屻€婂皵闆呯考銆嬩腑鎻忚堪锟?璨橈紝浼肩唺鑰屽皬锛岄粦鐧借壊锛岃兘椋熼摐閾侊�?鍞愪唬璇椾汉鐧藉眳鏄撳湪銆婂崲渚嶅尽鎵€浼犵敾鐔娿€嬩腑鎻忚堪锟?榛戠櫧鍒嗘槑鐢讳笉鎴愶紝鍥㈠洟鍙湁涓€韬交锟?瀹嬩唬鏂囩尞銆婂お骞冲箍璁般€嬩腑璁拌浇�?椋熼搧锟?鐨勫舰璞°€傛槑浠ｆ潕鏃剁弽鐨勩€婃湰鑽夌翰鐩€嬩腑瀵瑰ぇ鐔婄尗鏈夋洿涓鸿缁嗙殑璁拌浇�?璨橈紝褰技鐔婅€屽皬锛岄粦鐧借姳锛岃兘椋熼摐閾侊紝榻跨埅淇卞埄锟?</p>
+        <p>鍦ㄤ腑鍥戒紶缁熸枃鍖栦腑锛岄粦鐧界浉闂寸殑鐔婄尗琚涓洪槾闃冲钩琛＄殑璞″緛锛屼唬琛ㄧ潃鍜岃皭涓庤嚜鐒剁殑缁熶竴銆傚彜浠ｇ璇濅腑锛岀唺鐚璁や负鍏锋湁杈熼偑椹辩伨鐨勭濂囧姏閲忥紝鍦ㄤ竴浜涘湴鏂规皯闂翠紶璇翠腑锛岀唺鐚瑙嗕负鍚夌ゥ鐨勮薄寰侊紝鑳藉甫鏉ュソ杩愬拰骞冲畨�?/p>
+        
+        <h4>鏂囧鑹烘湳涓殑鐔婄尗褰㈣�?/h4>
+        <p>澶х唺鐚湪涓浗浼犵粺鏂囧銆佺粯鐢汇€侀洉濉戠瓑鑹烘湳褰㈠紡涓绻佸嚭鐜般€傚彜浠ｆ枃浜哄ⅷ瀹㈠父浠ョ唺鐚负棰樻潗鍒涗綔璇楄瘝姝岃祴锛岃禐缇庡叾鐙壒鐨勫褰㈠拰鎬ф牸銆傛槑娓呮椂鏈熺殑灞辨按鐢讳腑锛屾椂甯稿彲瑙佺唺鐚爾鎭簬绔规灄涔嬩腑鐨勫満鏅紝璞″緛鐫€闅愰€稿拰瓒呰劚鐨勭敓娲绘€佸害�?/p>
+        <p>鐜颁唬鏂囧浣滃搧濡傘€婄唺鐚殑鏁呬簨銆嬨€併€婃垜浠殑鏈嬪弸鐔婄尗銆嬨€併€婄唺鐚洖瀹躲€嬬瓑骞垮彈娆㈣繋锛岃繖浜涗綔鍝佷笉浠呮弿缁樹簡鐔婄尗鐨勭敓娲讳範鎬э紝杩樿瀺鍏ヤ簡瀵硅嚜鐒朵繚鎶ゅ拰鐢熸€佸钩琛＄殑鎬濊€冦€傝澶氬綋浠ｈ壓鏈濡傚惔鍐犱腑銆侀粍姘哥帀绛変篃浠ュぇ鐔婄尗涓轰富棰樺垱浣滀簡澶ч噺浣滃搧锛屽皢浼犵粺鏂囧寲鍏冪礌涓庣幇浠ｈ壓鏈〃鐜版墜娉曠浉缁撳悎�?/p>
+        <p>鍦ㄤ腑鍥戒紶缁熷伐鑹虹編鏈腑锛岀唺鐚舰璞¤骞挎硾搴旂敤浜庡壀绾搞€佸埡缁ｃ€佹湪闆曘€侀櫠鐡风瓑棰嗗煙锛屾垚涓轰腑鍥芥枃鍖栫殑閲嶈绗﹀彿涔嬩竴銆傝繖浜涜壓鏈搧涓嶄粎鍦ㄥ浗鍐呭箍鍙楁杩庯紝涔熸垚涓哄悜涓栫晫灞曠ず涓浗鏂囧寲鐨勯噸瑕佸獟浠嬶�?/p>
+        
+        <div class="culture-gallery">
+          <div class="culture-item">
+            <h4>鐔婄尗澶栦氦涓庡浗闄呭奖�?/h4>
+            <p>�?950骞翠唬寮€濮嬶紝涓浗鏀垮簻閫氳繃璧犻€佸ぇ鐔婄尗缁欏弸濂藉浗瀹讹紝寮€灞曚簡琚О�?鐔婄尗澶栦氦"鐨勬椿鍔拷?972骞达紝涓浗鍚戠編鍥借禒閫佺殑涓€瀵瑰ぇ鐔婄尗"鐜茬�?�?鍏村�?锛屾垚涓轰腑缇庡叧绯绘甯稿寲鐨勯噸瑕佽薄寰侊紝鍚稿紩浜嗚秴�?00涓囩編鍥芥皯浼楀弬瑙傘€傛鍚庯紝涓浗鍚戞棩鏈€佹硶鍥姐€佽嫳鍥姐€佸ⅷ瑗垮摜绛夊涓浗瀹惰禒閫佹垨绉熷€熷ぇ鐔婄尗锛岃繖涓€鐙壒鐨勫浜ゆ柟寮忓杩涗簡涓浗涓庝笘鐣屽悇鍥界殑鍙嬪ソ鍏崇郴锛屾垚涓轰腑鍥芥枃鍖栬蒋瀹炲姏鐨勯噸瑕佺粍鎴愰儴鍒嗭�?/p>
+            <p>鐔婄尗澶栦氦涓嶄粎淇冭繘浜嗗浗闄呭弸璋婏紝涔熸彁楂樹簡鍏ㄧ悆瀵瑰ぇ鐔婄尗淇濇姢鐨勫叧娉ㄣ€傞€氳繃杩欑鏂瑰紡锛屽ぇ鐔婄尗鎴愪负浜嗗拰骞炽€佸弸璋婂拰鑷劧淇濇姢鐨勫浗闄呰薄寰侊紝鍦ㄤ績杩涙枃鍖栦氦娴佸拰鐜淇濇姢鎰忚瘑鏂归潰鍙戞尌浜嗛噸瑕佷綔鐢拷?/p>
+            <p>鐩墠锛屼腑鍥藉凡缁忎笌鍏ㄧ�?0澶氫釜鍥藉鐨勫姩鐗╁洯寤虹珛浜嗗ぇ鐔婄尗淇濇姢鐮旂┒鍚堜綔鍏崇郴锛岃繖浜涘悎浣滈」鐩笉浠呭寘鎷ぇ鐔婄尗绻佽偛鍜岀爺绌讹紝杩樻兜鐩栦簡鐩稿叧鐨勬枃鍖栦氦娴佹椿鍔紝杩涗竴姝ユ墿澶т簡澶х唺鐚殑鍥介檯褰卞搷鍔涳�?/p>
+          </div>
+          <div class="culture-item">
+            <h4>鐔婄尗绗﹀彿瀛︿笌鏂囧寲璞″緛</h4>
+            <p>澶х唺鐚粦鐧藉垎鏄庣殑澶栬〃琚祴浜堜簡涓板瘜鐨勮薄寰佹剰涔夛紝鍦ㄤ腑鍥戒紶缁熷摬瀛︿腑锛岄粦鐧戒袱鑹蹭唬琛ㄩ槾闃筹紝璞″緛鐫€瀹囧畽鐨勫熀鏈绔嬬粺涓€鍏崇郴銆傜唺鐚殑褰㈣薄鍥犳琚涓哄拰璋愩€佸钩琛′笌涓焊涔嬮亾鐨勪綋鐜帮紝鍙嶆槧浜嗕腑鍥戒紶缁熸枃鍖栦腑杩芥眰澶╀汉鍚堜竴鐨勬€濇兂锟?/p>
+            <p>鍦ㄧ幇浠ｇぞ浼氾紝澶х唺鐚凡鎴愪负鍜屽钩銆佸弸璋娿€佷繚鎶ょ幆澧冪殑鍥介檯璞″緛�?961骞达紝涓栫晫鑷劧鍩洪噾�?WWF)灏嗗ぇ鐔婄尗浣滀负鍏舵爣蹇楋紝杩欎竴閫夋嫨浣垮ぇ鐔婄尗鎴愪负鍏ㄧ悆閲庣敓鍔ㄧ墿淇濇姢杩愬姩鐨勬棗甯溿€傚ぇ鐔婄尗娓╁拰銆佸弸鍠勭殑褰㈣薄涓庡叾婵掑嵄鐨勫澧冨舰鎴愬姣旓紝鍞よ捣浜嗕汉浠鑷劧淇濇姢鐨勫叡楦ｏ�?/p>
+            <p>鍦ㄤ腑鍥芥枃鍖栦腑锛屽ぇ鐔婄尗杩樿薄寰佺潃鍧氶煣涓庨€傚簲鍔涖€傚敖绠￠潰涓存爾鎭湴涓уけ鍜屾皵鍊欏彉鍖栫瓑鎸戞垬锛屽ぇ鐔婄尗浠嶇劧椤藉己鐢熷瓨锛岃繖绉嶇簿绁炶璧嬩簣浜嗙Н鏋佺殑鏂囧寲鎰忎箟锛屾垚涓轰腑鍥戒汉姘戜笉灞堜笉鎸犵簿绁炵殑璞″緛涔嬩竴锟?/p>
+          </div>
+        </div>
+        
+        <h4>鐔婄尗鍦ㄦ祦琛屾枃鍖栦腑鐨勫湴锟?/h4>
+        <p>鍦ㄧ幇浠ｆ祦琛屾枃鍖栦腑锛屽ぇ鐔婄尗鐨勫舰璞℃棤澶勪笉鍦紝浠庣數褰便€佸姩鐢诲埌骞垮憡銆佹父鎴忥紝鐔婄尗宸叉垚涓哄叏鐞冩渶鍙楁杩庣殑鍔ㄧ墿褰㈣薄涔嬩竴锟?/p>
+        <ul>
+          <li><strong>褰辫浣滃搧�?/strong>銆婂姛澶唺鐚€嬬郴鍒楃數褰卞叏鐞冪儹鏄狅紝涓昏"闃垮�?灏嗕腑鍥藉姛澶笌鐔婄尗褰㈣薄瀹岀編缁撳悎锛屽睍鐜颁簡涓浗鏂囧寲鐨勯瓍鍔涖€傝绯诲垪涓嶄粎鍦ㄥ晢涓氫笂鍙栧緱浜嗗法澶ф垚鍔燂紝杩橀€氳繃铻嶅叆涓浗浼犵粺鏂囧寲鍏冪礌濡傚お鏋併€佹皵鍔熴€佺瀹楁€濇兂绛夛紝鍚戝叏鐞冭浼椾紶鎾簡涓浗鏂囧寲绮鹃珦銆傛澶栵紝绾綍鐗囥€婃垜浠癁鐢熷湪涓浗銆嬨€併€婄唺鐚洖瀹惰矾銆嬬瓑浣滃搧涔熷悜涓栫晫灞曠ず浜嗗ぇ鐔婄尗鐨勭敓娲诲拰淇濇姢宸ヤ綔�?/li>
+          <li><strong>鍔ㄦ极褰㈣薄�?/strong>"鐔婄尗鐑ч�?�?鍔熷か鐔婄尗"�?鐔婄尗锟?绛夊姩婕舰璞℃繁鍙楀叏鐞冭浼楀枩鐖便€傚湪浜掕仈缃戞枃鍖栦腑锛岀唺鐚〃鎯呭寘骞挎硾娴佷紶锛屾垚涓虹綉缁滀氦娴佺殑閲嶈缁勬垚閮ㄥ垎銆備腑鍥藉師鍒涘姩鐢汇€婄唺鐚拰灏忛脊榧犮€嬨€併€婄唺鐚蛋澶╀笅銆嬬瓑浣滃搧涔熷湪鍥藉唴澶栬幏寰椾簡鑹ソ鍙嶅搷锛屾垚涓哄悜鍎跨浼犳挱鐜繚鐞嗗康鐨勯噸瑕佸獟浠嬶拷?/li>
+          <li><strong>鍚夌ゥ鐗╋細</strong>1990骞村寳浜簹杩愪細鍚夌ゥ�?鐩肩�?鏄竴鍙彲鐖辩殑澶х唺鐚紝鎴愪负涓浗浣撹偛璧涗簨鍚夌ゥ鐗╄璁＄殑缁忓吀銆傛鍚庯紝2008骞村寳浜ゥ杩愪細鐨勪簲锟?绂忓�?涓篃鍖呭惈浜嗙唺鐚舰�?鏅舵�?�?022骞村寳浜啲濂ヤ細鐨勫悏绁ョ墿"鍐板ⅸ锟?铏界劧鏄竴鍙啺鏅剁唺鐚紝浣嗗叾璁捐鐏垫劅涔熼儴鍒嗘潵婧愪簬澶х唺鐚紝鍐嶆璇佹槑浜嗙唺鐚舰璞″湪涓浗鍥介檯褰㈣薄濉戦€犱腑鐨勯噸瑕佸湴浣嶏�?/li>
+          <li><strong>鏂囧垱浜у搧锟?/strong>鐔婄尗涓婚鐨勬枃鍏枫€佹湇瑁呫€佺帺鍏枫€佹暟鐮佷骇鍝佺瓑鏂囧垱浜у搧椋庨潯鍏ㄧ悆锛屾垚涓轰腑鍥芥枃鍖栬緭鍑虹殑閲嶈杞戒綋銆傛垚閮藉ぇ鐔婄尗绻佽偛鐮旂┒鍩哄湴銆佸寳浜姩鐗╁洯绛夊湴鐨勭唺鐚懆杈逛骇鍝佸勾閿€鍞杈炬暟浜垮厓锛屽舰鎴愪簡瀹屾暣锟?鐔婄尗缁忔祹"浜т笟閾俱€傝繖浜涗骇鍝佷笉浠呭叿鏈夊晢涓氫环鍊硷紝涔熷湪娼滅Щ榛樺寲涓紶鎾潃鐔婄尗淇濇姢鐨勭悊蹇碉�?/li>
+          <li><strong>鏁板瓧鏂囧寲�?/strong>鍦ㄦ暟瀛楁椂浠ｏ紝鐔婄尗褰㈣薄琚箍娉涘簲鐢ㄤ簬鐢靛瓙娓告垙銆佽櫄鎷熺幇瀹炰綋楠屽拰绀句氦濯掍綋骞冲彴銆傚銆婂姩鐗╂．鍙嬩細銆嬩腑鐨勭唺鐚鑹层€併€婃垜鐨勪笘鐣屻€嬩腑鐨勭唺鐚ā鍨嬬瓑銆備竴浜涗簰鑱旂綉鍏徃涔熷皢鐔婄尗鍏冪礌铻嶅叆鍏跺搧鐗屾爣璇嗭紝�?鐔婄尗鐩存挱"绛夈€傝繖浜涙暟瀛楀寲琛ㄧ幇杩涗竴姝ユ墿澶т簡鐔婄尗鏂囧寲鐨勫奖鍝嶈寖鍥达紝鐗瑰埆鏄湪骞磋交鍙椾紬涓拷?/li>
+        </ul>
+        
+        <h4>鐔婄尗涓庡湴鏂规枃锟?/h4>
+        <p>鍦ㄥ洓宸濄€侀檿瑗裤€佺敇鑲冪瓑澶х唺鐚爾鎭湴鍖哄煙锛屽舰鎴愪簡鐙壒锟?鐔婄尗鏂囧寲�?銆傚綋鍦版皯闂存晠浜嬨€佷紶璇淬€佽妭鏃ュ簡鍏镐腑甯告湁澶х唺鐚殑韬奖銆傚鍥涘窛姘戦棿娴佷紶�?鐚唺鍙樼唺�?鐨勪紶璇达紝璁茶堪浜嗛粦鐔婁笌鐧界尗鐩告亱锛岀敓涓嬮粦鐧界浉闂村悗浠ｇ殑鏁呬簨锛屼綋鐜颁簡褰撳湴浜烘皯瀵瑰ぇ鐔婄尗鐨勫枩鐖卞拰鎯宠薄鍔涳拷?/p>
+        <p>鍥涘窛鎴愰兘宸插皢澶х唺鐚枃鍖栬瀺鍏ュ煄甯傚缓璁惧拰鏃呮父鍙戝睍鎴樼暐锛屾墦�?鐔婄尗涔嬮兘"鍩庡競鍝佺墝銆傛垚閮藉ぇ鐔婄尗绻佽偛鐮旂┒鍩哄湴銆侀兘姹熷牥鐔婄尗璋枫€佸崸榫欒嚜鐒朵繚鎶ゅ尯绛夊湴姣忓勾鍚稿紩鏁板崈涓囨父瀹紝甯﹀姩浜嗗綋鍦版梾娓镐笟銆侀楗笟鍜屼綇瀹夸笟鐨勫彂灞曘€傜唺鐚厓绱犺骞挎硾搴旂敤浜庡煄甯傞洉濉戙€佸叕鍏辫鏂藉拰寤虹瓚璁捐涓紝鎴愪负鍩庡競鏂囧寲鏅鐨勯噸瑕佺粍鎴愰儴鍒嗭�?/p>
+        <p>鍦ㄩギ椋熸枃鍖栨柟闈紝鍥涘窛鍦板尯鍑虹幇锟?鐔婄尗椁愬巺"�?鐔婄尗闈㈠寘"�?鐔婄尗濂惰尪"绛夌壒鑹茬編椋燂紝灏嗙唺鐚厓绱犱笌浼犵粺楗鐩哥粨鍚堛€傛墜宸ヨ壓鏂归潰锛岀唺鐚渶缁ｃ€佺唺鐚壀绾搞€佺唺鐚缂栫瓑浼犵粺宸ヨ壓鍝佹繁鍙楁父瀹㈠枩鐖憋紝淇冭繘浜嗛潪鐗╄川鏂囧寲閬椾骇鐨勪紶鎵垮拰鍒涙柊�?/p>
+        <p>姝ゅ锛屽綋鍦拌繕瀹氭湡涓惧姙"鐔婄尗鏂囧寲�?�?鐔婄尗鐢靛奖�?绛夋枃鍖栨椿鍔紝閫氳繃鑹烘湳灞曡銆佸鏈爺璁ㄣ€佹枃鑹鸿〃婕旂瓑褰㈠紡锛屼赴瀵岀唺鐚枃鍖栫殑鍐呮兜锛屾彁鍗囧叾褰卞搷鍔涖€傝繖浜涙椿鍔ㄤ笉浠呬績杩涗簡鏂囧寲浜ゆ祦锛屼篃澧炲己浜嗗叕浼楀澶х唺鐚繚鎶ょ殑鎰忚瘑�?/p>
+      </div>
+    `;
+    
+    // 鏂板锛氱唺鐚鏅儴锟?    knowledgeHtml += `
+      <div id="panda-science" class="knowledge-section">
+        <h3>鐔婄尗绉戞櫘</h3>
+        <div class="knowledge-content">
+          <div class="knowledge-text">
+            <p>澶х唺鐚笉浠呮槸鍙埍鐨勫姩鐗╋紝鏇存槸涓€涓厖婊＄瀛﹀ゥ绉樼殑鐗╃銆備綔涓哄湴鐞冧笂鏈€鍙楀枩鐖辩殑婵掑嵄鐗╃涔嬩竴锛屽ぇ鐔婄尗鐨勭敓鐗╁鐗规€с€佽繘鍖栧巻鍙插拰鐢熸€佷环鍊奸兘钑村惈鐫€涓板瘜鐨勭瀛︾煡璇嗐€備互涓嬪唴瀹瑰皢浠庡涓搴︽繁鍏ユ祬鍑哄湴浠嬬粛澶х唺鐚殑绉戝鐭ヨ瘑锛屽府鍔╂垜浠洿鍏ㄩ潰鍦颁簡瑙ｈ繖涓€鐙壒鐗╃�?/p>
+          </div>
+        </div>
+        
+        <h4>澶х唺鐚殑鍒嗙被涓庤繘锟?/h4>
+        <p>澶х唺�?瀛﹀悕锛欰iluropoda melanoleuca)灞炰簬椋熻倝鐩€佺唺绉戙€佸ぇ鐔婄尗浜氱銆佸ぇ鐔婄尗灞炵殑鍞竴鐗╃銆傚敖绠″湪鍒嗙被瀛︿笂褰掍簬椋熻倝鐩紝浣嗗ぇ鐔婄尗宸茬粡杩涘寲鍑轰簡涓昏浠ョ瀛愪负椋熺殑鐗规畩涔犳€э�?/p>
+        <p>澶х唺鐚殑杩涘寲鍘嗗彶鍙拷婧埌锟?00涓囧勾鍓嶇殑涓柊涓栨櫄鏈燂紝褰撴椂鍑虹幇浜嗘渶鏃╃殑澶х唺鐚鍏堚€斺€斿鐔婄尗銆傚寲鐭宠褰曡〃鏄庯紝澶х唺鐚殑绁栧厛鏈€鍒濆垎甯冭寖鍥村緢骞匡紝鍖呮嫭涓浗鍗楁柟銆佷笢鍗椾簹鐢氳嚦娆ф床閮ㄥ垎鍦板尯銆傜害锟?00-200涓囧勾鍓嶏紝澶х唺鐚紑濮嬮€傚簲绔归鎬х敓娲绘柟寮忥紝閫愭笎褰㈡垚浜嗙幇鍦ㄧ殑鐗瑰緛�?/p>
+        <p>鍩哄洜缁勭爺绌舵樉绀猴紝澶х唺鐚笌鍏朵粬鐔婄被鍔ㄧ墿鐨勫垎鍖栧彂鐢熷湪锟?000涓囧勾鍓嶏紝瀹冧滑鐨勮繎浜叉槸鐔婄鍔ㄧ墿锛岃€岄潪灏忕唺鐚拷?009骞村畬鎴愮殑澶х唺鐚叏鍩哄洜缁勬祴搴忎负鐮旂┒鍏惰繘鍖栧巻鍙叉彁渚涗簡閲嶈渚濇嵁锛岀瀛﹀鍙戠幇澶х唺鐚熀鍥犵粍涓湁璁稿涓庢秷鍖栥€佸厤鐤郴缁熺浉鍏崇殑鍩哄洜鍙戠敓浜嗘樉钁楀彉鍖栵紝杩欎簺鍙樺寲甯姪瀹冧滑閫傚簲浜嗕互绔瑰瓙涓轰富鐨勯ギ椋熶範鎯拷?/p>
+        
+        <h4>鏈夎叮鐨勭唺鐚瀛︿簨锟?/h4>
+        <div class="science-facts">
+          <div class="fact-item">
+            <h5>椋熻倝鍔ㄧ墿鐨勭礌椋燂拷?/h5>
+            <p>铏界劧澶х唺鐚睘浜庨鑲夌洰锛屼絾瀹冧�?9%鐨勯鐗╂槸绔瑰瓙銆傝繖绉嶉ギ椋熶範鎯殑杞彉鏄繘鍖栫殑濂囪抗銆傚ぇ鐔婄尗鐨勬秷鍖栫郴缁熶粛淇濈暀鐫€椋熻倝鍔ㄧ墿鐨勫熀鏈壒寰侊紝濡傜煭鑲犻亾鍜岀畝鍗曡儍缁撴瀯锛屼絾閫氳繃鐗规畩鐨勮偁閬撳井鐢熺墿缇よ惤锛屽畠浠兘澶熶粠绔瑰瓙涓幏鍙栬冻澶熺殑钀ュ吇銆傜爺绌跺彂鐜帮紝澶х唺鐚偁閬撲腑瀛樺湪澶氱鑳藉垎瑙ｇ氦缁寸礌鐨勭粏鑿岋紝杩欎簺寰敓鐗╁府鍔╁畠浠秷鍖栫瀛愪腑鐨勭氦缁寸礌鍜屽崐绾ょ淮绱狅拷?/p>
+            <p>鏈夎叮鐨勬槸锛屽ぇ鐔婄尗鐨勫熀鍥犵粍涓礋璐ｈ倝绫绘秷鍖栫殑鍩哄洜(濡傝礋璐ｉ矞鍛虫劅鍙楃殑T1R1鍩哄�?宸茬粡鍙戠敓浜嗗彉寮傦紝杩欏鑷村畠浠鑲夌被鐨勫叴瓒ｅぇ澶ч檷浣庛€傝繖绉嶅熀鍥犲彉寮傚彂鐢熷湪锟?00涓囧勾鍓嶏紝涓庡畠浠浆鍚戠椋熸€х敓娲绘柟寮忕殑鏃堕棿鐩稿惢鍚堬拷?/p>
+          </div>
+          <div class="fact-item">
+            <h5>绁炲锟?绗叚锟?</h5>
+            <p>澶х唺鐚墠鎺屼笂鏈変竴涓壒娈婄�?鎷囨�?锛屽疄闄呬笂鏄厱楠ㄤ腑鐨勭苯锟?绉嶅瓙锟?婕斿彉鑰屾潵鐨勶紝杩欎娇瀹冧滑鑳藉鏇存湁鏁堝湴鎶撴彙绔瑰瓙銆傝繖涓吉鎷囨寚涓庡叾浠栦簲涓湡姝ｇ殑鎵嬫寚鍗忎綔锛屼娇澶х唺鐚兘澶熶互鎯婁汉鐨勭伒娲绘€ф搷浣滅瀛愶紝姣忓垎閽熷彲浠ュ墺�?5-30鏍圭瀛愶�?/p>
+            <p>2021骞村彂琛ㄧ殑涓€椤圭爺绌堕€氳繃瀵瑰ぇ鐔婄尗绁栧厛鍖栫煶鐨勫垎鏋愶紝鍙戠幇杩欎釜"绗叚锟?鐨勮繘鍖栬繃绋嬮暱锟?00涓囧勾锛屾槸鑷劧閫夋嫨鐨勫濡欎緥瀛愩€傜爺绌朵汉鍛樿繕鍙戠幇锛屽ぇ鐔婄尗鐨勮厱楠ㄧ粨鏋勪笌鍏朵粬鐔婄被鐩告瘮鏈夋樉钁楀樊寮傦紝杩欎簺宸紓涓撻棬閫傚簲浜嗗畠浠殑绔归涔犳€э�?/p>
+            <p>鏇翠护浜烘儕璁剁殑鏄紝澶х唺鐚殑鍚庢帉涔熸湁绫讳技鐨勭粨鏋勶紝铏界劧涓嶅鍓嶆帉锟?鎷囨�?鍙戣揪锛屼絾鍚屾牱鏈夊姪浜庡畠浠湪鍚冪瀛愭椂淇濇寔绋冲畾濮垮娍�?/p>
+          </div>
+          <div class="fact-item">
+            <h5>瓒呬綆鑳介噺娑堬�?/h5>
+            <p>鐮旂┒鍙戠幇锛屽ぇ鐔婄尗鐨勬柊闄堜唬璋㈢巼鍙湁鍚屼綋鍨嬪姩鐗╃殑锟?0%锛岃繖鏄畠浠兘澶熶互浣庤惀鍏讳环鍊肩殑绔瑰瓙涓洪鐨勫叧閿€傚簲銆備竴椤瑰彂琛ㄥ湪銆婄瀛︺€嬫潅蹇椾笂鐨勭爺绌舵祴閲忎簡閲庣敓澶х唺鐚殑鑳介噺娑堣€楋紝鍙戠幇瀹冧滑姣忓ぉ鐨勮兘閲忔秷鑰椾粎涓哄悓绛変綋閲嶉粦鐔婄�?8%�?/p>
+            <p>杩欑浣庤兘閲忔秷鑰椾笌鍑犱釜鍥犵礌鏈夊叧锛氶鍏堬紝澶х唺鐚殑鐢茬姸鑵烘縺绱犳按骞宠緝浣庯紝杩欓檷浣庝簡鍏跺熀纭€浠ｈ阿鐜囷紱鍏舵锛屽畠浠殑涓昏鍣ㄥ畼濡傝倽鑴忋€佸ぇ鑴戠浉瀵硅緝灏忥紝鍑忓皯浜嗚兘閲忛渶姹傦紱鏈€鍚庯紝澶х唺鐚瘡澶╂湁瓒呰繃涓€鍗婄殑鏃堕棿鐢ㄤ簬浼戞伅锛屾椿鍔ㄩ噺杩滀綆浜庡叾浠栫唺绫伙拷?/p>
+            <p>杩欑鐙壒鐨勮兘閲忕瓥鐣ヤ娇澶х唺鐚兘澶熷湪钀ュ吇浠峰€间笉楂樼殑绔瑰瓙楗涓嬬敓瀛橈紝浣嗕篃浣垮畠浠鐜鍙樺寲鐗瑰埆鏁忔劅锛屽洜涓哄畠浠病鏈夊浣欑殑鑳介噺鍌ㄥ鏉ュ簲瀵圭獊鍙戞儏鍐碉�?/p>
+          </div>
+          <div class="fact-item">
+            <h5>鐙壒鐨勯粦鐧介厤锟?/h5>
+            <p>澶х唺鐚爣蹇楁€х殑榛戠櫧姣涜壊涓€鐩存槸绉戝瀹剁爺绌剁殑鐑偣锟?017骞村彂琛ㄥ湪銆婅涓虹敓鎬佸銆嬫潅蹇椾笂鐨勭爺绌舵彁鍑猴紝杩欑閰嶈壊鍙兘鍏锋湁澶氶噸鍔熻兘锛氱櫧鑹查潰閮ㄦ湁鍔╀簬闈㈤儴琛ㄦ儏浜ゆ祦锛涢粦鑹茶€虫湹鍙兘鏄绀轰俊鍙凤紱榛戣壊鍥涜偄鏈夊姪浜庡湪闆湴涓繚鎸佷綋娓╋紱鐧借壊韬綋鍒欏湪闆湴鐜涓彁渚涗吉瑁咃�?/p>
+            <p>鍙︿竴椤圭爺绌跺彂鐜帮紝澶х唺鐚殑榛戠櫧閰嶈壊鍦ㄥ叾鏍栨伅鍦扮殑鍏夌収鏉′欢涓嬪叿鏈夊嚭鑹茬殑浼鏁堟灉銆傚湪绔规灄涓紝榛戠櫧鐩搁棿鐨勬瘺鑹茶兘澶熸墦鐮磋疆寤擄紝浣挎崟椋熻€呴毦浠ュ彂鐜板畠浠€傝繖绉嶄繚鎶よ壊閫傚簲浜嗗ぇ鐔婄尗鏃㈠湪闆湴鍙堝湪绔规灄涓椿鍔ㄧ殑鐢熸椿涔犳€э拷?/p>
+            <p>鍩哄洜鐮旂┒琛ㄦ槑锛屾帶鍒跺ぇ鐔婄尗榛戠櫧姣涜壊鐨勫熀鍥犱笌鍏朵粬鍝轰钩鍔ㄧ墿鐨勬瘺鑹插熀鍥犳湁鏄捐憲涓嶅悓锛岃繖浜涘熀鍥犵殑鐗规畩鍙樺紓鍙兘鏄ぇ鐔婄尗閫傚簲鐗瑰畾鐢熸€佷綅鐨勭粨鏋滐�?/p>
+          </div>
+        </div>
+        
+        <h4>鐔婄尗鐨勭敓鎬佷範鎬т笌琛屼负�?/h4>
+        <p><strong>楗涔犳儻�?/strong>澶х唺鐚槸鍏稿瀷鐨勯绔逛笓瀹讹紝姣忓ぉ闇€瑕佹秷锟?0-38鍏枻绔瑰瓙锛屽崰锟?0-16灏忔椂杩涢鏃堕棿銆傚畠浠富瑕侀鐢ㄧ绔广€佹嫄妫嶇�?0澶氱绔瑰瓙锛屽苟浼氭牴鎹鑺傚彉鍖栭€夋嫨涓嶅悓閮ㄤ綅锛氭槬瀛ｅ亸濂藉绗嬶紝澶忕瀛ｈ妭鍚冪鍙讹紝鍐鍒欎互绔硅寧涓轰富銆傛湁瓒ｇ殑鏄紝澶х唺鐚绔瑰瓙鐨勬秷鍖栫巼浠呬负17%宸﹀彸锛岃繙浣庝簬鍏朵粬鑽夐鍔ㄧ墿锛岃繖涔熸槸瀹冧滑闇€瑕佸ぇ閲忚繘椋熺殑鍘熷洜锟?/p>
+        <p><strong>娲诲姩妯″紡�?/strong>澶х唺鐚棦鏈夋樇琛屾€т篃鏈夊琛屾€х壒寰侊紝閫氬父姣忓ぉ�?-4涓椿鍔ㄩ珮宄般€傚湪浜虹被娲诲姩棰戠箒鐨勫湴鍖猴紝瀹冧滑鏇村€惧悜浜庡闂存椿鍔ㄣ€傚ぇ鐔婄尗鐨勬椿鍔ㄨ寖鍥磋緝灏忥紝鎴愬勾闆勬€х殑棰嗗湴绾︿�?-7骞虫柟鍏噷锛岄泴鎬у垯锟?-4骞虫柟鍏噷銆傚畠浠€氳繃鍦ㄦ爲涓婄暀涓嬫皵鍛虫爣璁般€佸埉鎿︽爲鐨瓑鏂瑰紡鍒掑畾棰嗗湴鑼冨洿锟?/p>
+        <p><strong>绀句氦琛屼负锟?/strong>澶х唺鐚槸鍏稿瀷鐨勭嫭灞呭姩鐗╋紝闄や氦閰嶅鑺傚寰堝皯涓庡悓绫绘帴瑙︺€傚畠浠€氳繃澶氱澹伴煶杩涜浜ゆ祦锛屽寘鎷福鍙€佸惣鍙拰鍚卞惐澹扮瓑锛岀瀛﹀宸茶褰曚簡鑷冲皯13绉嶄笉鍚岀殑鍙戝０銆傛澶栵紝瀹冧滑杩橀€氳繃姘斿懗鏍囪鍜岃瑙変俊鍙疯繘琛岄棿鎺ヤ氦娴併€傜爺绌惰〃鏄庯紝澶х唺鐚兘澶熼€氳繃鍡呴椈鍏朵粬涓綋鐨勬皵鍛虫爣璁拌幏鍙栨湁鍏虫€у埆銆佸勾榫勩€佺箒娈栫姸鎬佺瓑淇℃伅�?/p>
+        <p><strong>绻佹畺鐗圭偣�?/strong>澶х唺鐚殑绻佹畺鍛ㄦ湡鏋佷负鐗规畩锛岄泴鎬ф瘡骞翠粎锟?-3澶╃殑鍙戞儏鏈燂紝杩欏ぇ澶у鍔犱簡鑷劧绻佹畺鐨勯毦搴︺€傞泴鎬уぇ鐔婄尗鎬€瀛曟湡锟?-5涓湀锛岄€氬父涓€鑳庝骇1-2浠斻€傚辜宕藉嚭鐢熷悗瀹屽叏渚濊禆姣嶄翰锛岀洿鍒扮害1.5宀佹墠寮€濮嬬嫭绔嬬敓娲汇€傞噹澶栧ぇ鐔婄尗鐨勫钩鍧囧鍛戒负15-20骞达紝鑰屽湀鍏讳釜浣撳彲�?5-30骞达�?/p>
+        
+        <h4>鐔婄尗瀹濆疂鐨勬垚�?/h4>
+        <ul>
+          <li><strong>鍑虹敓浣撻噸�?/strong>澶х唺鐚辜宕藉嚭鐢熸椂浠呴噸80-200鍏嬶紝绾︿负姣嶄翰浣撻噸�?/900锛屾槸鍝轰钩鍔ㄧ墿涓浉瀵逛綋閲嶆渶灏忕殑鏂扮敓鍎夸箣涓€銆傝繖绉嶆瀬灏忕殑鍑虹敓浣撻噸涓庡ぇ鐔婄尗鐭殏鐨勬湁鏁堝濞犳湡(瀹為檯鑳氳儙鍙戣偛锟?0-45�?鏈夊叧锛岀瀛﹀璁や负杩欏彲鑳芥槸涓轰簡鍑忚交姣嶄翰鐨勮兘閲忚礋鎷咃拷?/li>
+          <li><strong>鏃╂湡鍙戣偛�?/strong>骞煎唇鍑虹敓鏃跺嚑涔庢槸鏃犳瘺銆佺矇绾㈣壊銆佺溂鐫涚揣闂殑锛岄渶瑕佺害45澶╂墠鑳界潄寮€鐪肩潧锛岃繖姣斿ぇ澶氭暟鐔婄被骞煎唇鐨勫彂鑲查€熷害鎱€傚湪鏈€鍒濆嚑鍛紝姣嶄翰鍑犱箮涓嶇寮€骞煎唇锛屾瘡2-3灏忔椂鍠傚ザ涓€娆°€傚辜宕界殑鐢熼暱閫熷害鎯婁汉锛屽嚭鐢熷悗6涓湀浣撻噸鍙鍔犵�?00鍊嶏�?/li>
+          <li><strong>榛戠櫧鑺辩汗�?/strong>骞煎唇鍑虹敓涓€鍛ㄥ悗寮€濮嬪嚭鐜版爣蹇楁€х殑榛戠櫧鑺辩汗锛岀�?鍛ㄥ悗瀹屽叏鏄剧幇銆傝繖绉嶈姳绾圭殑鍑虹幇椤哄簭涔熷緢鏈夎寰嬶細鍏堟槸鐪肩潧鍛ㄥ洿鍑虹幇榛戣壊鏂戝潡锛岀劧鍚庢槸鑰虫湹銆佽偐鑶€锛屾渶鍚庢槸鍥涜偄銆傜爺绌惰〃鏄庯紝杩欑鍙戣偛椤哄簭涓庡ぇ鐔婄尗杩涘寲鍙蹭腑榛戣壊鍖哄煙鐨勮幏寰楅『搴忕浉涓€鑷达�?/li>
+          <li><strong>瀛︿範鎶€鑳斤細</strong>骞煎�?-6涓湀寮€濮嬪皾璇曞浐浣撻鐗╋紝8涓湀宸﹀彸寮€濮嬪涔犵埇鏍戯紝杩欐槸瀹冧滑閲嶈鐨勯槻寰℃妧鑳姐€備竴宀佸乏鍙崇殑骞煎唇寮€濮嬪涔犵嫭绔嬭椋燂紝浣嗕粛鐒朵緷璧栨瘝浜茬殑淇濇姢鍜屾寚瀵笺€傜爺绌跺彂鐜帮紝姣嶄翰浼氭湁鎰忚瘑鍦板皢骞煎唇甯﹀埌涓嶅悓绫诲瀷鐨勭鏋楋紝鏁欏瀹冧滑璇嗗埆鍜岄鐢ㄤ笉鍚岀绫荤殑绔瑰瓙锟?/li>
+          <li><strong>鐙珛鐢熸椿�?/strong>骞煎唇锟?.5-2宀佸紑濮嬬嫭绔嬬敓娲伙紝鎬ф垚鐔熷垯闇€�?-7骞存椂闂淬€傞泴鎬ч€氬父�?-6宀侀娆＄箒娈栵紝鑰岄泟鎬у垯闇€�?-7宀佹墠鑳芥垚鍔熶氦閰嶃€傞噹澶栬瀵熷彂鐜帮紝骞磋交鐨勫ぇ鐔婄尗鍦ㄧ嫭绔嬪垵鏈熸浜＄巼杈冮珮锛岃繖鍙兘涓庡畠浠己涔忚椋熷拰閬块櫓缁忛獙鏈夊叧锟?/li>
+        </ul>
+        
+        <h4>鐔婄尗涓庣敓鎬佺郴锟?/h4>
+        <p>澶х唺鐚槸鍏稿瀷锟?浼炴姢锟?锛屼繚鎶ゅぇ鐔婄尗鍙婂叾鏍栨伅鍦板悓鏃朵篃淇濇姢浜嗘爾鎭湴鍐呯殑鍏朵粬鏁板崈绉嶅姩妞嶇墿銆備竴椤瑰澶х唺鐚浗瀹跺叕鍥殑鐢熺墿澶氭牱鎬ц皟鏌ュ彂鐜帮紝璇ュ尯鍩熷唴鏈夎秴锟?,000绉嶆鐗╁拰2,000绉嶈剨妞庡姩鐗╋紝鍏朵腑鍖呮嫭璁稿鐝嶇█婵掑嵄鐗╃锟?/p>
+        <p>澶х唺鐚€氳繃椋熺敤绔瑰瓙鍜屾帓娉勶紝鍦ㄧ敓鎬佺郴缁熶腑鎵紨鐫€閲嶈瑙掕壊銆傜爺绌惰〃鏄庯紝澶х唺鐚殑绮究涓惈鏈夊ぇ閲忔湭娑堝寲鐨勭瀛愮瀛愬拰绾ょ淮锛岃繖浜涚墿璐ㄨ繑鍥炲湡澹ゅ悗鑳藉淇冭繘绔规灄鏇存柊鍜屽湡澹よ偉鍔涙彁鍗囥€備竴椤瑰彂琛ㄥ湪銆婄敓鎬佸銆嬫潅蹇椾笂鐨勭爺绌跺彂鐜帮紝澶х唺鐚爾鎭湴鐨勫湡澹や腑鏈夋洿涓板瘜鐨勫井鐢熺墿澶氭牱鎬у拰鏇撮珮鐨勫吇鍒嗗惈閲忥�?/p>
+        <p>姝ゅ锛屽ぇ鐔婄尗鐨勬椿鍔ㄤ範鎬т篃鏈夊姪浜庣淮鎸佹．鏋楃敓鎬佺郴缁熺殑鍋ュ悍銆傚畠浠湪绔规灄涓┛琛屾椂浼氳俯韪忓拰鎶樻柇涓€浜涚瀛愶紝鍒涢€犲嚭灏忓瀷骞叉壈鍖哄煙锛岃繖浜涘尯鍩熶负鍏朵粬妞嶇墿鐨勭敓闀挎彁渚涗簡鏈轰細锛屽鍔犱簡鏍栨伅鍦扮殑寮傝川鎬с€傜爺绌朵汉鍛樿繕鍙戠幇锛屽ぇ鐔婄尗鐨勯鍦版爣璁拌锟?濡傚湪鏍戜笂纾ㄧ�?鑳藉鍒涢€犲井鐢熷锛屼负涓€浜涚壒娈婄殑鐪熻弻鍜屾槅铏彁渚涙爾鎭湴锟?/p>
+        <p>浠庢洿骞挎硾鐨勭敓鎬佺郴缁熸湇鍔¤搴︾湅锛屽ぇ鐔婄尗鏍栨伅锟?涓昏鏄北鍦版．锟?鎻愪緵浜嗛噸瑕佺殑姘存簮娑靛吇銆佺⒊鍌ㄥ瓨銆佹按鍦熶繚鎸佺瓑鍔熻兘銆傛嵁浼拌锛屽ぇ鐔婄尗鏍栨伅鍦版瘡骞存彁渚涚殑鐢熸€佺郴缁熸湇鍔′环鍊艰秴锟?5浜跨編鍏冿紝杩滈珮浜庝繚鎶ゆ姇鍏ャ€傝繖琛ㄦ槑锛屼繚鎶ゅぇ鐔婄尗涓嶄粎鏈夌敓鎬佹剰涔夛紝涔熷叿鏈夐噸瑕佺殑缁忔祹浠峰€硷�?/p>
+        
+        <h4>鏈€鏂扮鐮旇繘�?/h4>
+        <p><strong>鍩哄洜缁勭爺绌讹�?/strong>2018骞达紝绉戝瀹跺畬鎴愪簡澶х唺鐚熀鍥犵粍鐨勯珮璐ㄩ噺娴嬪簭鍜岀粍瑁咃紝杩欎竴鎴愭灉涓虹爺绌跺ぇ鐔婄尗鐨勮繘鍖栧巻鍙插拰閫傚簲鏈哄埗鎻愪緵浜嗛噸瑕佸伐鍏枫€傜爺绌朵汉鍛樺彂鐜板ぇ鐔婄尗鍩哄洜缁勪腑鏈夊涓笌鍏嶇柅绯荤粺銆佸梾瑙夊拰鍛宠鐩稿叧鐨勫熀鍥犲彂鐢熶簡鐗规畩鍙樺寲锛岃繖浜涘彉鍖栧彲鑳戒笌瀹冧滑閫傚簲鐗瑰畾鐢熸€佷綅鏈夊叧锟?/p>
+        <p><strong>鑲犻亾寰敓鐗╃粍锟?/strong>2019骞寸殑鐮旂┒鎻ず浜嗗ぇ鐔婄尗鑲犻亾涓瓨鍦ㄧ壒娈婄殑寰敓鐗╃兢钀斤紝杩欎簺寰敓鐗╄兘澶熷府鍔╁垎瑙ｇ瀛愪腑鐨勭氦缁寸礌銆傛湁瓒ｇ殑鏄紝灏界澶х唺鐚富瑕佸悆妞嶇墿锛屼絾鍏惰偁閬撳井鐢熺墿缁勬洿绫讳技浜庨鑲夊姩鐗╄€岄潪鑽夐鍔ㄧ墿锛岃繖鍙嶆槧浜嗗畠浠殑杩涘寲鍘嗗彶锟?/p>
+        <p><strong>琛屼负鐢熸€佸�?/strong>鍒╃敤GPS椤瑰湀鍜岀孩澶栫浉鏈烘妧鏈紝绉戝瀹跺閲庣敓澶х唺鐚殑琛屼负妯″紡鏈変簡鏇存繁鍏ョ殑浜嗚В锟?020骞寸殑涓€椤圭爺绌跺彂鐜帮紝姘斿€欏彉鍖栨鍦ㄥ奖鍝嶅ぇ鐔婄尗鐨勬椿鍔ㄨ寰嬪拰鏍栨伅鍦伴€夋嫨锛屽鑷村畠浠悜鏇撮珮娴锋嫈鍦板尯杩佺Щ銆傚彟涓€椤圭爺绌跺垯鎻ず浜嗗ぇ鐔婄尗濡備綍閫氳繃璋冩暣娲诲姩鏃堕棿鏉ラ伩鍏嶄笌浜虹被娲诲姩鍐茬獊�?/p>
+        <p><strong>绻佹畺鐢熺墿瀛︼�?/strong>2021骞达紝鐮旂┒浜哄憳鎴愬姛瑙ｆ瀽浜嗗ぇ鐔婄尗鍙戞儏鏈熺殑婵€绱犺皟鎺ф満鍒讹紝杩欎竴鍙戠幇涓烘敼杩涗汉宸ョ箒鑲叉妧鏈彁渚涗簡鐞嗚鍩虹銆傜瀛﹀杩樺彂鐜帮紝澶х唺鐚殑绻佹畺鎴愬姛涓庢爾鎭湴璐ㄩ噺銆佹皵鍊欐潯浠跺拰涓綋鍋ュ悍鐘跺喌瀵嗗垏鐩稿叧�?/p>
+        <p><strong>淇濇姢閬椾紶瀛︼�?/strong>2022骞寸殑涓€椤圭爺绌堕€氳繃鍒嗘瀽閲庣敓澶х唺鐚缇ょ殑閬椾紶澶氭牱鎬э紝纭畾浜嗗嚑涓叧閿殑鐢熸€佸粖閬擄紝杩欎簺寤婇亾瀵圭淮鎸佷笉鍚屼簹绉嶇兢涔嬮棿鐨勫熀鍥犱氦娴佽嚦鍏抽噸瑕併€傜爺绌朵汉鍛樺缓璁紭鍏堜繚鎶よ繖浜涘尯鍩燂紝浠ラ槻姝㈢缇よ繘涓€姝ョ鐗囧寲�?/p>
+        
+        <h4>浜掑姩绉戞櫘闂�?/h4>
+        <div class="science-quiz">
+          <div class="quiz-item">
+            <p class="quiz-question">闂細澶х唺鐚瘡澶╅渶瑕佸悆澶氬皯绔瑰瓙�?/p>
+            <p class="quiz-answer">绛旓細鎴愬勾澶х唺鐚瘡澶╅渶瑕佸�?2-38鍏枻绔瑰瓙锛屽崰锟?0-16灏忔椂杩涢鏃堕棿銆傜敱浜庣瀛愮殑钀ュ吇浠峰€间綆锛屼笖澶х唺鐚绔瑰瓙鐨勬秷鍖栫巼浠呬�?7%宸﹀彸锛屽畠浠繀椤绘憚鍏ュぇ閲忛鐗╂墠鑳芥弧瓒宠兘閲忛渶姹傘€傛湁瓒ｇ殑鏄紝澶х唺鐚瘡澶╂帓鍑虹殑绮究閲忕害锟?0鍏枻锛屽嚑涔庝笌鎽勫叆閲忕浉褰擄紝杩欏弽鏄犱簡绔瑰瓙涓ぇ閮ㄥ垎绾ょ淮鏈娑堝寲�?/p>
+          </div>
+          <div class="quiz-item">
+            <p class="quiz-question">闂細澶х唺鐚负浠€涔堜富瑕佸悆绔瑰瓙锟?/p>
+            <p class="quiz-answer">绛旓細杩欐槸闀挎湡杩涘寲鐨勭粨鏋溿€傜�?00涓囧勾鍓嶏紝澶х唺鐚殑绁栧厛寮€濮嬭浆鍚戜互绔瑰瓙涓洪锛屽彲鑳芥槸鍥犱负绔瑰瓙鍦ㄥ叾鏍栨伅鍦板叏骞村彲寰楋紝绔炰簤鑰呭皯锛屼笖褰撴椂鍏朵粬椋熺墿璧勬簮鏈夐檺銆傞殢鐫€鏃堕棿鎺ㄧЩ锛屽ぇ鐔婄尗杩涘寲鍑轰簡閫傚簲绔归鐨勭壒娈婄粨锟?�?绗叚锟?)鍜屾秷鍖栫郴缁熴€傚熀鍥犵粍鐮旂┒鍙戠幇锛屽ぇ鐔婄尗鐨�?R1鍩哄�?璐熻矗鎰熺煡鑲夌被椴滃懗)宸茬粡澶辨椿锛岃繖鍙兘瀵艰嚧瀹冧滑瀵硅倝绫荤殑鍏磋叮闄嶄綆銆傛澶栵紝澶х唺鐚€氳繃闄嶄綆鑳介噺娑堣€楀拰澧炲姞鎽勯閲忥紝鎴愬姛閫傚簲浜嗚繖绉嶄綆钀ュ吇鐨勯鐗╂潵婧愶�?/p>
+          </div>
+          <div class="quiz-item">
+            <p class="quiz-question">闂細澶х唺鐚槸婵掑嵄鍔ㄧ墿鍚楋�?/p>
+            <p class="quiz-answer">绛旓�?016骞达紝鍥介檯鑷劧淇濇姢鑱旂�?IUCN)灏嗗ぇ鐔婄尗鐨勪繚鎶ょ姸鎬佷�?婵掑�?闄嶄�?鏄撳�?锛岃繖鍙嶆槧浜嗕腑鍥藉湪澶х唺鐚繚鎶ゆ柟闈㈠彇寰楃殑鏄捐憲鎴愬氨銆傛牴锟?020骞寸殑鍏ㄥ浗澶х唺鐚皟鏌ワ紝閲庣敓澶х唺鐚暟閲忓凡澧炶嚦1,864鍙紝锟?000骞村鍔犱簡17%銆傜劧鑰岋紝澶х唺鐚粛闈复鏍栨伅鍦扮牬纰庡寲銆佹皵鍊欏彉鍖栧拰绔瑰瓙寮€鑺辨灟姝荤瓑濞佽儊銆傜壒鍒槸姘斿€欏彉鍖栧彲鑳藉鑷村ぇ鐔婄尗閫傚疁鏍栨伅鍦伴潰绉噺锟?9-36%锛岃繖瀵瑰叾闀挎湡鐢熷瓨鏋勬垚鎸戞垬銆傚洜姝わ紝灏界淇濇姢鐘舵€佹湁鎵€鏀瑰杽锛屽ぇ鐔婄尗浠嶉渶瑕佹寔缁殑淇濇姢鍔姏锟?/p>
+          </div>
+          <div class="quiz-item">
+            <p class="quiz-question">闂細澶х唺鐚湪閲庡濡備綍浜ゆ祦锟?/p>
+            <p class="quiz-answer">绛旓細澶х唺鐚富瑕侀€氳繃澹伴煶銆佹皵鍛冲拰瑙嗚淇″彿杩涜浜ゆ祦銆傚畠浠湁鑷冲�?3绉嶄笉鍚岀殑鍙戝０锛屽寘鎷彨澹般€佸惣鍙€佸惐鍚卞０绛夛紝鐢ㄤ簬琛ㄨ揪涓嶅悓鎯呯华鍜屾剰鍥俱€傚湪绻佹畺瀛ｈ妭锛岄泴鎬т細鍙戝嚭鐗规畩鐨勫彨澹板惛寮曢泟鎬с€傛皵鍛虫爣璁版槸澶х唺鐚渶閲嶈鐨勪氦娴佹柟寮忥紝瀹冧滑浼氬湪鏍戝共涓婃懇鎿﹁噣閮ㄨ吅浣撶暀涓嬫皵鍛筹紝鎴栫敤灏挎恫鏍囪棰嗗湴銆傝繖浜涙皵鍛虫爣璁板寘鍚釜浣撲俊鎭紝濡傛€у埆銆佸勾榫勩€佺箒娈栫姸鎬佺瓑銆傝瑙変氦娴佷富瑕侀€氳繃韬綋濮垮娍鍜岄潰閮ㄨ〃鎯呭疄鐜帮紝鐮旂┒鍙戠幇澶х唺鐚殑榛戠櫧闈㈤儴鏈夊姪浜庡寮鸿〃鎯呯殑鍙鎬э�?/p>
+          </div>
+          <div class="quiz-item">
+            <p class="quiz-question">闂細澶х唺鐚殑瀵垮懡鏈夊闀匡紵</p>
+            <p class="quiz-answer">绛旓細閲庣敓澶х唺鐚殑骞冲潎瀵垮懡绾︿负15-20骞达紝鑰屽湀鍏讳釜浣撳彲浠ユ椿锟?5-30宀併€傜洰鍓嶈褰曠殑鏈€闀垮鍛芥槸涓浗鍔ㄧ墿鍥殑涓€鍙悕锟?宸存�?鐨勯泴鎬уぇ鐔婄尗锛屽畠娲诲埌�?8�?鐩稿綋浜庝汉绫荤�?00澶氬�?銆傚ぇ鐔婄尗鐨勫鍛藉彈澶氱鍥犵礌褰卞搷锛屽寘鎷仐浼犮€佹爾鎭湴璐ㄩ噺銆侀鐗╁彲鐢ㄦ€у拰鍋ュ悍鐘跺喌绛夈€傜爺绌惰〃鏄庯紝閲庡澶х唺鐚殑姝讳骸鍘熷洜涓昏鍖呮嫭鐤剧梾銆佽€佸勾銆佹崟锟?涓昏鏄辜�?鍜屼汉绫绘椿鍔ㄥ共鎵般€傞殢鐫€淇濇姢鎺柦鐨勫姞寮哄拰鍏藉尰鎶€鏈殑杩涙锛屽ぇ鐔婄尗鐨勫钩鍧囧鍛藉湪杩囧幓鍑犲崄骞存湁鎵€澧炲姞�?/p>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // 淇濇姢鐜扮姸閮ㄥ�?
+    knowledgeHtml += `
+      <div id="conservation" class="knowledge-section">
+        <h3>${knowledgeData.conservation.title}</h3>
+        ${knowledgeData.conservation.content.map(text => `<p>${text}</p>`).join('')}
+        <p>涓浗鏀垮簻瀹炴柦鐨勪繚鎶ゆ帾鏂藉寘鎷�?/p>
+        <ol>
+          <li><strong>鏍栨伅鍦颁繚鎶わ�?/strong>涓浗寤虹珛�?7涓嚜鐒朵繚鎶ゅ尯锛屾€婚潰绉秴锟?,300,000鍏》锛屼繚鎶や簡锟?4%鐨勫ぇ鐔婄尗鏍栨伅鍦帮紝瑕嗙洊浜嗙害67%鐨勯噹鐢熷ぇ鐔婄尗绉嶇兢�?/li>
+          <li><strong>鍥藉鍏洯寤鸿�?/strong>2021�?0鏈堬紝涓浗澶х唺鐚浗瀹跺叕鍥寮忚绔嬶紝闈㈢Н27,134骞虫柟鍏噷锛屽崰澶х唺鐚嚜鐒舵爾鎭湴鐨勫ぇ锟?0%锛屾暣鍚堜簡3涓渷浠界殑澶х唺鐚繚鎶ゅ尯�?/li>
+          <li><strong>鐢熸€佸粖閬撳缓璁撅�?/strong>閫氳繃寤鸿鐢熸€佸粖閬撹繛鎺ュ垎鏁ｇ殑澶х唺鐚爾鎭湴锛屼績杩涚缇や氦娴侊紝鎻愰珮閬椾紶澶氭牱鎬э�?/li>
+          <li><strong>绉戠爺绻佽偛�?/strong>涓浗澶х唺鐚繚鎶ょ爺绌朵腑蹇冪瓑鏈烘瀯鍦ㄥぇ鐔婄尗绻佽偛銆佺柧鐥呴槻鎺с€侀噹鍖栧煿璁瓑棰嗗煙鍙栧緱閲嶅ぇ绐佺牬锛屽湀鍏诲ぇ鐔婄尗鏁伴噺宸茶秴�?00鍙�?/li>
+          <li><strong>鍥介檯鍚堜綔�?/strong>涓浗涓庡涓浗瀹跺拰鍥介檯缁勭粐寮€灞曞ぇ鐔婄尗淇濇姢鍚堜綔锛岃繘琛岀瀛︾爺绌跺拰鍏紬鏁欒偛�?/li>
+        </ol>
+        <p>闈复鐨勪富瑕佸▉鑳侊細</p>
+        <ul>
+          <li>鏍栨伅鍦扮牬纰庡寲锛氬叕璺€佹按鐢电珯绛夊缓璁惧皢澶х唺鐚爾鎭湴鍒嗗壊鎴愬绔嬬殑灏忓尯鍩燂紝闃荤鍩哄洜浜ゆ祦�?/li>
+          <li>姘斿€欏彉鍖栵細鍏ㄧ悆姘斿€欏彉鏆栧彲鑳藉鑷村ぇ鐔婄尗涓婚绔瑰瓙鐨勫紑鑺卞懆鏈熸敼鍙橈紝褰卞搷椋熺墿渚涘簲锟?/li>
+          <li>绔瑰瓙寮€鑺辨灟姝伙細绔瑰瓙鍦ㄥ紑鑺卞悗浼氬叏闈㈡灟姝伙紝閲嶆柊鐢熼暱闇€瑕佹暟骞存椂闂达紝鏇惧鑷村ぇ鐔婄尗楗ラタ姝讳骸锟?/li>
+          <li>浜虹被娲诲姩骞叉壈锛氭梾娓搞€侀噰闆嗙瓑娲诲姩鍙兘鎵撴壈澶х唺鐚殑姝ｅ父鐢熸椿�?/li>
+        </ul>
+      </div>
+    `;
+    
+    // 鐮旂┒鎴愬氨閮ㄥ�?
+    knowledgeHtml += `
+      <div id="research" class="knowledge-section">
+        <h3>鐮旂┒鎴愬氨</h3>
+        <p>澶х唺鐚爺绌跺湪杩戝嚑鍗佸勾鍙栧緱浜嗘樉钁楄繘灞曪細</p>
+        <ul>
+          <li><strong>鍩哄洜缁勬祴搴忥�?/strong>2010骞达紝绉戝瀹跺畬鎴愪簡澶х唺鐚叏鍩哄洜缁勬祴搴忥紝涓虹爺绌跺ぇ鐔婄尗杩涘寲鍘嗗彶鍜屼繚鎶ゆ彁渚涗簡閲嶈渚濇嵁�?/li>
+          <li><strong>浜哄伐绻佽偛鎶€鏈�?/strong>涓浗绉戝瀹舵敾鍏嬩簡澶х唺鐚汉宸ョ箒鑲查毦棰橈紝鎴愬姛鐜囦粠鏃╂湡锟?0%鎻愰珮鍒扮幇鍦ㄧ�?0%浠ヤ笂锟?/li>
+          <li><strong>閲庡寲鏀惧綊�?/strong>鎴�?023骞达紝涓浗宸叉湁瓒呰繃25鍙汉宸ョ箒鑲茬殑澶х唺鐚垚鍔熸斁褰掗噹澶栵紝鍏朵腑澶氬彧宸叉垚鍔熺箒鑲插悗浠ｏ�?/li>
+          <li><strong>琛屼负瀛︾爺绌讹細</strong>閫氳繃绾㈠鐩告満鐩戞祴绛夋妧鏈紝绉戝瀹跺閲庣敓澶х唺鐚殑琛屼负涔犳€ф湁浜嗘洿娣卞叆鐨勪簡瑙ｏ拷?/li>
+          <li><strong>鐤剧梾闃叉帶�?/strong>鐮旂┒浜哄憳宸茬粡璇嗗埆骞惰兘澶熸湁鏁堟不鐤楀ぇ鐔婄尗甯歌鐤剧梾锛屾樉钁楅檷浣庝簡姝讳骸鐜囷�?/li>
+        </ul>
+      </div>
+    `;
+    
+    // 娣诲姞缈昏瘧鎸夐�?
+    knowledgeHtml += `
+      <div class="knowledge-section translation-section">
+        <h3>澶氳瑷€缈昏瘧</h3>
+        <p>閫夋嫨浠ヤ笅璇█鏌ョ湅鐔婄尗鐭ヨ瘑鐨勭炕璇戠増鏈�?/p>
+        <div class="translation-buttons">
+          <button id="translate-en" class="translation-button">
+            <img src="./assets/panda_logo1.png" alt="English" style="width:24px; height:24px;">
+            English
+          </button>
+          <button id="translate-ru" class="translation-button">
+            <img src="./assets/panda_logo2.png" alt="袪褍褋褋泻懈�? style="width:24px; height:24px;">
+            袪褍褋褋泻懈�?
+          </button>
+          <button id="translate-zh" class="translation-button active">
+            <img src="./assets/panda_logo3.jpg" alt="涓�? style="width:24px; height:24px;">
+            涓�?
+          </button>
+        </div>
+      </div>
+    `;
+    
+    // 鍏抽棴HTML鏍囩�?
+    knowledgeHtml += `
+      </div>
+    `;
+    
+    // 鏇存柊鍐呭
+    contentContainer.innerHTML = knowledgeHtml;
+    
+    // 娣诲姞缈昏瘧鎸夐挳鐐瑰嚮浜嬩�?
+    const translateToEnglish = document.getElementById('translate-en');
+    const translateToRussian = document.getElementById('translate-ru');
+    const translateToChinese = document.getElementById('translate-zh');
+    
+    if (translateToEnglish) {
+      translateToEnglish.addEventListener('click', function() {
+        translateKnowledgePage('en');
+      });
+    }
+    
+    if (translateToRussian) {
+      translateToRussian.addEventListener('click', function() {
+        translateKnowledgePage('ru');
+      });
+    }
+    
+    if (translateToChinese) {
+      translateToChinese.addEventListener('click', function() {
+        translateKnowledgePage('zh');
+      });
+    }
+    
+    // 娣诲姞鐭ヨ瘑鍒嗙被瀵艰埅鐐瑰嚮浜嬩�?
+    const navItems = document.querySelectorAll('.knowledge-nav-item');
+    navItems.forEach(item => {
+      item.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // 绉婚櫎鎵€鏈夊鑸」鐨勬椿鍔ㄧ姸锟?        navItems.forEach(nav => nav.classList.remove('active'));
+        
+        // 娣诲姞褰撳墠瀵艰埅椤圭殑娲诲姩鐘讹拷?        this.classList.add('active');
+        
+        // 婊氬姩鍒扮洰鏍囬儴锟?        const targetId = this.getAttribute('href').substring(1);
+        const targetElement = document.getElementById(targetId);
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+    
+    // 鍒犻櫎鍙兘瀵艰嚧椤甸潰鑷姩璺宠浆鐨勪唬锟?    // 涓嶈绉婚櫎鍜岄噸鏂扮粦瀹氬鑸簨�?    
+  } catch (error) {
+    console.error('鍔犺浇鐔婄尗鐭ヨ瘑澶辫触:', error);
+    contentContainer.innerHTML = '<div class="error-container"><p>鍔犺浇鐔婄尗鐭ヨ瘑澶辫触锛岃绋嶅悗鍐嶈瘯锟?/p></div>';
+  }
+}
+
+// 缈昏瘧鐔婄尗鐭ヨ瘑椤甸潰
+function translateKnowledgePage(language) {
+  // 鑾峰彇鎵€鏈夌炕璇戞寜锟?  const allButtons = document.querySelectorAll('.translation-button');
+  // 绉婚櫎鎵€鏈夋寜閽殑娲诲姩鐘讹�?  allButtons.forEach(btn => btn.classList.remove('active'));
+  
+  // 璁剧疆褰撳墠璇█鎸夐挳涓烘椿鍔ㄧ姸�?  const currentButton = document.getElementById(`translate-${language}`);
+  if (currentButton) {
+    currentButton.classList.add('active');
+  }
+  
+  // 鑾峰彇鎵€鏈夐渶瑕佺炕璇戠殑鍏冪�?
+  const titleElements = document.querySelectorAll('.knowledge-section h3');
+  const paragraphElements = document.querySelectorAll('.knowledge-section p');
+  const listItemElements = document.querySelectorAll('.knowledge-section li');
+  const pageTitle = document.querySelector('.knowledge-page h2');
+  
+  // 鏍规嵁閫夋嫨鐨勮瑷€杩涜缈昏�?
+  if (language === 'en') {
+    // 鑻辨枃缈昏瘧
+    if (pageTitle) pageTitle.textContent = 'Panda Encyclopedia Knowledge';
+    
+    // 缈昏瘧鏍囬鍏冪�?
+    titleElements.forEach(el => {
+      // 鏀寔浠庝縿鏂囧垏鎹㈠埌鑻辨枃
+      const originalText = el.textContent;
+      
+      // 灏嗕縿鏂囨爣棰樻槧灏勫洖涓枃鏍囬锛屽啀缈昏瘧鎴愯嫳�?      let chineseText = '';
+      if (originalText === '袨褋薪芯胁薪邪褟 懈薪褎芯褉屑邪褑懈褟 �?斜芯谢褜褕懈�?锌邪薪写邪褏') {
+        chineseText = '澶х唺鐚熀鏈俊锟?;
+      } else if (originalText === '袩褉懈胁褘褔泻懈 卸懈蟹薪�?) {
+        chineseText = '鐢熸椿涔狅拷?;
+      } else if (originalText === '小褌邪褌褍褋 芯褏褉邪薪褘') {
+        chineseText = '淇濇姢鐜扮姸';
+      } else if (originalText === '袠褋褋谢械写芯胁邪褌械谢褜褋泻懈�?写芯褋褌懈卸械薪懈褟') {
+        chineseText = '鐮旂┒鎴愬氨';
+      } else if (originalText === '袣褍谢褜褌褍褉薪芯械 蟹薪邪褔械薪懈械') {
+        chineseText = '鏂囧寲鎰忎箟';
+      } else if (originalText === '袦薪芯谐芯褟蟹褘褔薪褘泄 锌械褉械胁芯�?) {
+        chineseText = '澶氳瑷€缈昏瘧';
+      } else {
+        chineseText = originalText; // 鍙兘宸茬粡鏄腑鏂囨垨鑻辨�?
+      }
+      
+      // 灏嗕腑鏂囨爣棰樼炕璇戞垚鑻辨�?
+      switch (chineseText) {
+        case '澶х唺鐚熀鏈俊锟?:
+          el.textContent = 'Basic Information about Giant Pandas';
+          break;
+        case '鐢熸椿涔狅拷?:
+          el.textContent = 'Living Habits';
+          break;
+        case '淇濇姢鐜扮姸':
+          el.textContent = 'Conservation Status';
+          break;
+        case '鐮旂┒鎴愬氨':
+          el.textContent = 'Research Achievements';
+          break;
+        case '鏂囧寲鎰忎箟':
+          el.textContent = 'Cultural Significance';
+          break;
+        case '澶氳瑷€缈昏瘧':
+          el.textContent = 'Multi-language Translation';
+          break;
+      }
+    });
+    
+    // 缈昏瘧娈佃惤鏂囨湰锛堢畝鍖栫ず渚嬶紝瀹為檯搴旂敤涓彲浠ユ洿璇︾粏锟?    paragraphElements.forEach(el => {
+      // 閽堝鐗瑰畾娈佃惤杩涜缈昏�?
+      if (el.textContent.includes('澶х唺鐚槸涓栫晫涓婃渶鍙楁杩庣殑婵掑嵄鍔ㄧ墿涔嬩竴') || 
+          el.textContent.includes('Giant pandas are one of the most popular endangered animals') ||
+          el.textContent.includes('Giant pandas are regarded as China\'s national treasure')) {
+        el.textContent = 'Giant pandas are one of the most popular endangered animals in the world. Adult giant pandas are about 1.2-1.5 meters long and weigh about 100-150 kilograms. They have iconic black and white fur, with black parts including around the eyes, ears, nose, shoulders, and limbs, and the rest being white.';
+      } else if (el.textContent.includes('澶х唺鐚嫢鏈夌嫭鐗圭�?绗叚锟?') || 
+                el.textContent.includes('Giant pandas have a unique "sixth finger"')) {
+        el.textContent = 'Giant pandas have a unique "sixth finger" (evolved from the carpal bone), which allows them to easily grip bamboo. Although their digestive system belongs to carnivores, it has adapted to a diet primarily consisting of bamboo.';
+      } else if (el.textContent.includes('鐩墠锛岄噹鐢熷ぇ鐔婄尗涓昏鍒嗗竷鍦ㄤ腑鍥藉洓宸濈�?) || 
+                el.textContent.includes('Currently, wild giant pandas are mainly distributed')) {
+        el.textContent = 'Currently, wild giant pandas are mainly distributed in the mountainous areas of Sichuan Province (about 1,200), Shaanxi Province (more than 300), and Gansu Province (more than 100) in China, with a total of nearly 1,900. The total area of giant panda reserves has reached about 2.6 million hectares.';
+      } else if (el.textContent.includes('澶х唺鐚湪涓浗鏂囧寲鍜屽浗闄呬氦寰€涓叿鏈夐噸瑕佸湴�?) ||
+                el.textContent.includes('Giant pandas hold an important position')) {
+        el.textContent = 'Giant pandas hold an important position in Chinese culture and international relations:';
+      } else if (el.textContent.includes('澶х唺鐚爺绌跺湪杩戝嚑鍗佸勾鍙栧緱浜嗘樉钁楄繘锟?) ||
+                el.textContent.includes('Giant panda research has made significant progress')) {
+        el.textContent = 'Giant panda research has made significant progress in recent decades:';
+      } else if (el.textContent.includes('涓浗鏀垮簻瀹炴柦鐨勪繚鎶ゆ帾鏂藉寘�?) ||
+                el.textContent.includes('Conservation measures implemented by the Chinese government')) {
+        el.textContent = 'Conservation measures implemented by the Chinese government include:';
+      } else if (el.textContent.includes('闈复鐨勪富瑕佸▉锟?) ||
+                el.textContent.includes('Main threats faced')) {
+        el.textContent = 'Main threats faced:';
+      } else if (el.textContent.includes('閫夋嫨浠ヤ笅璇█鏌ョ湅鐔婄尗鐭ヨ瘑鐨勭炕璇戠増�?) ||
+                el.textContent.includes('Select the following languages to view')) {
+        el.textContent = 'Select the following languages to view translated versions of panda knowledge:';
+      } 
+      // 鐔婄尗鏂囧寲閮ㄥ垎鐨勭炕�?      else if (el.textContent.includes('澶х唺鐚綔涓轰腑鍥界殑鍥藉疂锛屽湪涓崕鏂囧寲涓嫢鏈夋繁鍘氱殑鍘嗗彶搴曡暣') ||
+                el.textContent.includes('Giant pandas, as China\'s national treasure')) {
+        el.textContent = 'Giant pandas are regarded as China\'s national treasure, a symbol of China\'s unique cultural heritage and biodiversity.';
+      }
+      else if (el.textContent.includes('澶х唺鐚湪涓浗鍙や唬鏂囩尞涓棭鏈夎�?) ||
+                el.textContent.includes('Giant pandas were recorded in ancient Chinese literature')) {
+        el.textContent = 'Giant pandas have a long history in Chinese culture. In ancient literature, they were called "�?. In "Yi Jing", it describes: "�? like a bear but smaller, black and white, able to eat copper and iron". In "L眉shi Chunqiu", it mentions: "�? black and white, difficult to draw, round, only with a light body". In "Tai Ping Guang Ji", it describes: "�? black and white, difficult to draw, round, only with a light body". In "Ben Cao Gang Mu", it has a more detailed description: "�? like a bear but smaller, black and white, able to eat copper and iron, sharp claws and teeth".';
+      } 
+      else if (el.textContent.includes('鍦ㄤ腑鍥戒紶缁熸枃鍖栦腑锛岄粦鐧界浉闂寸殑鐔婄尗琚涓洪槾闃冲钩琛＄殑璞″緛') ||
+                el.textContent.includes('In traditional Chinese culture, the black and white panda')) {
+        el.textContent = 'In traditional Chinese culture, the black and white panda is considered a symbol of yin and yang balance, representing harmony and unity with nature. In ancient myths, pandas were believed to have magical powers to ward off evil spirits and disasters. In some local legends, pandas were seen as symbols of good luck, able to bring good fortune and peace.';
+      }
+      // 鐔婄尗绉戞櫘閮ㄥ垎鐨勭炕�?      else if (el.textContent.includes('澶х唺鐚笉浠呮槸鍙埍鐨勫姩鐗╋紝鏇存槸涓€涓厖婊＄瀛﹀ゥ绉樼殑鐗╃�?) ||
+                el.textContent.includes('Giant pandas are not only adorable animals')) {
+        el.textContent = 'Giant pandas are not only adorable animals, but also a species full of scientific mysteries. As one of the most beloved endangered species on Earth, their biological characteristics, evolutionary history, and ecological significance contain rich scientific knowledge. The following content will introduce scientific knowledge about giant pandas from various perspectives, helping us understand this unique species more comprehensively.';
+      } 
+      else if (el.textContent.includes('澶х唺�?瀛﹀悕锛欰iluropoda melanoleuca)灞炰簬椋熻倝锟?) ||
+                el.textContent.includes('Giant pandas (scientific name: Ailuropoda melanoleuca)')) {
+        el.textContent = 'Giant pandas (scientific name: Ailuropoda melanoleuca) belong to the order Carnivora, family Ursidae, subfamily Ailuropodinae, genus Ailuropoda, and are the only species. Although classified as carnivores in taxonomy, giant pandas have evolved into a special diet primarily consisting of bamboo.';
+      } 
+      else if (el.textContent.includes('澶х唺鐚殑杩涘寲鍘嗗彶鍙拷婧埌锟?00涓囧勾鍓嶇殑涓柊涓栨櫄�?) ||
+                el.textContent.includes('The evolutionary history of giant pandas can be traced back')) {
+        el.textContent = 'The evolutionary history of giant pandas can be traced back to the late Miocene, about 8 million years ago, when the earliest ancestor of giant pandas - Ailurarctos - appeared. Fossil records show that the ancestors of giant pandas were originally widely distributed, including southern China, Southeast Asia, and even parts of Europe. About 4-2 million years ago, giant pandas began to adapt to bamboo-based lifestyles and gradually formed their current characteristics.';
+      }
+    });
+    
+    // 缈昏瘧鍒楄〃锟?    listItemElements.forEach(el => {
+      const strongTag = el.querySelector('strong');
+      if (strongTag) {
+        // 缈昏瘧灏忔爣棰橈紙甯︽湁strong鏍囩鐨勯儴鍒嗭�?
+        const subtitle = strongTag.textContent.replace('�?, '').replace(': ', '');
+        switch (subtitle) {
+          case '楗�?:
+          case 'Diet':
+          case '袩懈褌邪薪懈�?:
+            strongTag.textContent = 'Diet: ';
+          break;
+          case '娲诲�?:
+          case 'Activity':
+          case '袗泻褌懈胁薪芯褋褌褜':
+            strongTag.textContent = 'Activity: ';
+            break;
+          case '绻佹�?:
+          case 'Reproduction':
+          case '袪邪蟹屑薪芯卸械薪懈�?:
+            strongTag.textContent = 'Reproduction: ';
+            break;
+          case '瀵垮�?:
+          case 'Lifespan':
+          case '袩褉芯写芯谢卸懈褌械谢褜薪芯褋褌�?卸懈蟹薪�?:
+            strongTag.textContent = 'Lifespan: ';
+            break;
+          case '棰嗗湴琛屼负':
+          case 'Territorial Behavior':
+          case '孝械褉褉懈褌芯褉懈邪谢褜薪芯�?锌芯胁械写械薪懈�?:
+            strongTag.textContent = 'Territorial Behavior: ';
+            break;
+          case '浜ゆ祦鏂瑰紡':
+          case 'Communication Methods':
+          case '小锌芯褋芯斜�?泻芯屑屑褍薪懈泻邪褑懈懈':
+            strongTag.textContent = 'Communication Methods: ';
+            break;
+          case '娲诲姩瑙勫緥':
+          case 'Activity Patterns':
+          case '袪械卸懈�?邪泻褌懈胁薪芯褋褌懈':
+            strongTag.textContent = 'Activity Patterns: ';
+            break;
+          case '浣撴俯璋冭妭':
+          case 'Temperature Regulation':
+          case '袪械谐褍谢褟褑懈�?褌械屑锌械褉邪褌褍褉�?:
+            strongTag.textContent = 'Temperature Regulation: ';
+            break;
+          case '鍥藉疂鍦颁綅':
+          case 'National Treasure Status':
+          case '小褌邪褌褍褋 薪邪褑懈芯薪邪谢褜薪芯谐�?褋芯泻褉芯胁懈褖�?:
+            strongTag.textContent = 'National Treasure Status: ';
+            break;
+          case '鍜屽钩鍙嬭皧浣匡�?:
+          case 'Peace and Friendship Ambassador':
+          case '袩芯褋芯�?屑懈褉邪 �?写褉褍卸斜褘':
+            strongTag.textContent = 'Peace and Friendship Ambassador: ';
+            break;
+          case '淇濇姢璞″緛':
+          case 'Conservation Symbol':
+          case '小懈屑胁芯谢 芯褏褉邪薪褘 锌褉懈褉芯写�?:
+            strongTag.textContent = 'Conservation Symbol: ';
+            break;
+          case '鏃呮父璧勬簮':
+          case 'Tourism Resource':
+          case '孝褍褉懈褋褌懈褔械褋泻懈�?褉械褋褍褉褋':
+            strongTag.textContent = 'Tourism Resource: ';
+            break;
+          case '鏂囧寲鍒涙剰浜т笟':
+          case 'Cultural Creative Industry':
+          case '袠薪写褍褋褌褉懈�?泻褍谢褜褌褍褉薪芯谐�?褌胁芯褉褔械褋褌胁邪':
+            strongTag.textContent = 'Cultural Creative Industry: ';
+            break;
+          case '鍩哄洜缁勬祴�?:
+          case 'Genome Sequencing':
+          case '小械泻胁械薪懈褉芯胁邪薪懈械 谐械薪芯屑邪':
+            strongTag.textContent = 'Genome Sequencing: ';
+            break;
+          case '浜哄伐绻佽偛鎶€�?:
+          case 'Artificial Breeding Technology':
+          case '孝械褏薪芯谢芯谐懈褟 懈褋泻褍褋褋褌胁械薪薪芯谐芯 褉邪蟹胁械写械薪懈褟':
+            strongTag.textContent = 'Artificial Breeding Technology: ';
+            break;
+          case '閲庡寲鏀惧綊':
+          case 'Rewilding and Release':
+          case '袪械懈薪褌褉芯写褍泻褑懈�?�?写懈泻褍�?锌褉懈褉芯写�?:
+            strongTag.textContent = 'Rewilding and Release: ';
+            break;
+          case '琛屼负瀛︾爺锟?:
+          case 'Behavioral Studies':
+          case '袠褋褋谢械写芯胁邪薪懈褟 锌芯胁械写械薪懈�?:
+            strongTag.textContent = 'Behavioral Studies: ';
+            break;
+          case '鐤剧梾闃叉帶':
+          case 'Disease Prevention and Control':
+          case '袩褉芯褎懈谢邪泻褌懈泻邪 �?泻芯薪褌褉芯谢褜 蟹邪斜芯谢械胁邪薪懈�?:
+            strongTag.textContent = 'Disease Prevention and Control: ';
+            break;
+          case '鏍栨伅鍦颁繚�?:
+          case 'Habitat Protection':
+          case '袟邪褖懈褌邪 褋褉械写�?芯斜懈褌邪薪懈褟':
+            strongTag.textContent = 'Habitat Protection: ';
+            break;
+          case '鍥藉鍏洯寤鸿':
+          case 'National Park Construction':
+          case '小褌褉芯懈褌械谢褜褋褌胁�?薪邪褑懈芯薪邪谢褜薪褘褏 锌邪褉泻芯胁':
+            strongTag.textContent = 'National Park Construction: ';
+            break;
+          case '鐢熸€佸粖閬撳缓�?:
+          case 'Ecological Corridor Construction':
+          case '小褌褉芯懈褌械谢褜褋褌胁�?褝泻芯谢芯谐懈褔械褋泻懈�?泻芯褉懈写芯褉芯�?:
+            strongTag.textContent = 'Ecological Corridor Construction: ';
+            break;
+          case '绉戠爺绻佽偛':
+          case 'Scientific Research and Breeding':
+          case '袧邪褍褔薪褘�?懈褋褋谢械写芯胁邪薪懈褟 �?褉邪蟹胁械写械薪懈械':
+            strongTag.textContent = 'Scientific Research and Breeding: ';
+            break;
+          case '鍥介檯鍚堜綔':
+          case 'International Cooperation':
+          case '袦械卸写褍薪邪褉芯写薪芯�?褋芯褌褉褍写薪懈褔械褋褌胁芯':
+            strongTag.textContent = 'International Cooperation: ';
+            break;
+        }
+        
+        // 缈昏瘧鍒楄〃椤瑰唴�?        // 鑾峰彇鍒楄〃椤圭殑瀹屾暣鏂囨湰鍐呭�?
+        const fullText = el.textContent;
+        
+        // 鑻辨枃缈昏瘧鍒楄〃椤瑰唴�?        // 澶х唺鐚壒鎬ф弿锟?        if (fullText.includes('澶х唺鐚槸鏉傞鎬у姩�?) || 
+            fullText.includes('Giant pandas are omnivorous animals') ||
+            fullText.includes('袘芯谢褜褕懈�?锌邪薪写�?- 褝褌�?胁褋械褟写薪褘械 卸懈胁芯褌薪褘械')) {
+          el.innerHTML = strongTag.outerHTML + 'Giant pandas are omnivorous animals, but mainly feed on bamboo. They like to eat more than 20 types of bamboo, including arrow bamboo and walking stick bamboo, and also eat wild fruits, grasses, insects, etc.';
+        } 
+        else if (fullText.includes('澶х唺鐚€ф牸娓╅�?) || 
+                fullText.includes('Giant pandas have a gentle temperament') ||
+                fullText.includes('袘芯谢褜褕懈�?锌邪薪写�?懈屑械褞�?屑褟谐泻懈泄 褏邪褉邪泻褌械褉')) {
+          el.innerHTML = strongTag.outerHTML + 'Giant pandas have a gentle temperament, live solitary lives, prefer quiet, move slowly, and spend most of their time foraging and resting.';
+        } 
+        else if (fullText.includes('澶х唺鐚€ф垚鐔熷勾锟?) || 
+                fullText.includes('Giant pandas reach sexual maturity') ||
+                fullText.includes('袘芯谢褜褕懈�?锌邪薪写�?写芯褋褌懈谐邪褞�?锌芯谢芯胁芯�?蟹褉械谢芯褋褌懈')) {
+          el.innerHTML = strongTag.outerHTML + 'Giant pandas reach sexual maturity at 5.5-6.5 years of age. Their mating season is from March to May, with a gestation period of 83-200 days, usually producing 1-2 cubs weighing about 150 grams at birth.';
+        } 
+        else if (fullText.includes('閲庣敓澶х唺鐚钩鍧囧锟?) || 
+                fullText.includes('Wild giant pandas have an average lifespan') ||
+                fullText.includes('袛懈泻懈�?斜芯谢褜褕懈�?锌邪薪写�?懈屑械褞�?褋褉械写薪褞�?锌褉芯写芯谢卸懈褌械谢褜薪芯褋褌�?卸懈蟹薪�?)) {
+          el.innerHTML = strongTag.outerHTML + 'Wild giant pandas have an average lifespan of about 20 years, while captive giant pandas can live to 25-30 years.';
+        } 
+        else if (fullText.includes('澶х唺鐚槸鐙眳鍔ㄧ墿') || 
+                fullText.includes('Giant pandas are solitary animals') ||
+                fullText.includes('袘芯谢褜褕懈�?锌邪薪写�?- 芯写懈薪芯褔薪褘�?卸懈胁芯褌薪褘械')) {
+          el.innerHTML = strongTag.outerHTML + 'Giant pandas are solitary animals, and each giant panda has its own territory. They mark their territory by leaving scent marks on trees and scratching tree bark. The territory of an adult male giant panda is about 3-7 square kilometers, while that of females is relatively smaller.';
+        } 
+        else if (fullText.includes('澶х唺鐚€氳繃澶氱澹伴�?) || 
+                fullText.includes('Giant pandas communicate through various sounds') ||
+                fullText.includes('袘芯谢褜褕懈�?锌邪薪写�?芯斜褖邪褞褌褋褟 �?锌芯屑芯褖褜�?褉邪蟹谢懈褔薪褘�?蟹胁褍泻芯胁')) {
+          el.innerHTML = strongTag.outerHTML + 'Giant pandas communicate through various sounds, including bleating, roaring, and chirping. Their calls are especially noticeable during the breeding season. In addition, they also communicate indirectly through scent marking.';
+        } 
+        else if (fullText.includes('澶х唺鐚竴澶╀腑锟?0-16灏忔�?) || 
+                fullText.includes('Giant pandas spend 10-16 hours a day') ||
+                fullText.includes('袘芯谢褜褕懈�?锌邪薪写�?锌褉芯胁芯写褟褌 10-16 褔邪褋芯�?�?写械薪褜')) {
+          el.innerHTML = strongTag.outerHTML + 'Giant pandas spend 10-16 hours a day foraging, with the rest of the time mostly used for resting. They are both diurnal and nocturnal animals, but in areas with frequent human activity, they tend to be more active at night.';
+        } 
+        else if (fullText.includes('澶х唺鐚枩娆㈠噳鐖界殑鐜') || 
+                fullText.includes('Giant pandas prefer cool environments') ||
+                fullText.includes('袘芯谢褜褕懈�?锌邪薪写�?锌褉械写锌芯褔懈褌邪褞褌 锌褉芯褏谢邪写薪褍褞 褋褉械写�?)) {
+          el.innerHTML = strongTag.outerHTML + 'Giant pandas prefer cool environments, with suitable temperatures ranging from 17-25掳C. In summer, they move to higher elevations to avoid heat; in winter, they move to lower elevations.';
+        }
+        // 鏂囧寲鎰忎箟閮ㄥ�?
+        else if (fullText.includes('澶х唺鐚瑙嗕负涓浗鐨勫浗�?) || 
+                fullText.includes('Giant pandas are regarded as China\'s national treasure') ||
+                fullText.includes('袘芯谢褜褕懈�?锌邪薪写�?褋褔懈褌邪褞褌褋�?薪邪褑懈芯薪邪谢褜薪褘屑 褋芯泻褉芯胁懈褖械屑 袣懈褌邪�?)) {
+          el.innerHTML = strongTag.outerHTML + 'Giant pandas are regarded as China\'s national treasure, a symbol of China\'s unique cultural heritage and biodiversity.';
+        } 
+        else if (fullText.includes('�?950骞翠唬寮€锟?) || 
+                fullText.includes('Since the 1950s, China has promoted') ||
+                fullText.includes('�?1950-�?谐芯写芯�?袣懈褌邪�?褋锌芯褋芯斜褋褌胁褍械褌')) {
+          el.innerHTML = strongTag.outerHTML + 'Since the 1950s, China has promoted friendly relations with other countries through "panda diplomacy."';
+        } 
+        else if (fullText.includes('涓栫晫鑷劧鍩洪噾锟?WWF)') || 
+                fullText.includes('The World Wildlife Fund (WWF) uses') ||
+                fullText.includes('袙褋械屑懈褉薪褘�?褎芯薪写 写懈泻芯�?锌褉懈褉芯写�?(WWF)')) {
+          el.innerHTML = strongTag.outerHTML + 'The World Wildlife Fund (WWF) uses the giant panda as its logo, making it an iconic image for global wildlife conservation.';
+        } 
+        else if (fullText.includes('澶х唺鐚槸涓浗閲嶈鐨勬梾娓歌祫锟?) || 
+                fullText.includes('Giant pandas are an important tourism resource') ||
+                fullText.includes('袘芯谢褜褕懈�?锌邪薪写�?褟胁谢褟褞褌褋褟 胁邪卸薪褘屑 褌褍褉懈褋褌懈褔械褋泻懈�?褉械褋褍褉褋芯屑')) {
+          el.innerHTML = strongTag.outerHTML + 'Giant pandas are an important tourism resource in China, with the Chengdu Research Base of Giant Panda Breeding attracting millions of visitors each year.';
+        } 
+        else if (fullText.includes('澶х唺鐚舰璞″箍娉涘簲鐢ㄤ簬鏂囧垱浜у�?) || 
+                fullText.includes('Giant panda images are widely used') ||
+                fullText.includes('袠蟹芯斜褉邪卸械薪懈�?斜芯谢褜褕懈�?锌邪薪写 褕懈褉芯泻芯 懈褋锌芯谢褜蟹褍褞褌褋褟')) {
+          el.innerHTML = strongTag.outerHTML + 'Giant panda images are widely used in cultural and creative products, animations, films, and other media, creating enormous economic value.';
+        }
+        // 鐮旂┒鎴愬氨閮ㄥ�?
+        else if (fullText.includes('2010骞达紝绉戝瀹跺畬鎴愪簡澶х唺鐚叏鍩哄洜缁勬祴锟?) || 
+                fullText.includes('In 2010, scientists completed the giant panda genome') ||
+                fullText.includes('�?2010 谐芯写褍 褍褔械薪褘械 蟹邪胁械褉褕懈谢�?褋械泻胁械薪懈褉芯胁邪薪懈械 谐械薪芯屑邪')) {
+          el.innerHTML = strongTag.outerHTML + 'In 2010, scientists completed the giant panda genome sequencing, providing a valuable basis for studying the evolutionary history and conservation of giant pandas.';
+        } 
+        else if (fullText.includes('涓浗绉戝瀹舵敾鍏嬩簡澶х唺鐚汉宸ョ箒鑲查毦锟?) || 
+                fullText.includes('Chinese scientists have overcome the challenges') ||
+                fullText.includes('袣懈褌邪泄褋泻懈�?褍褔械薪褘械 锌褉械芯写芯谢械谢懈 锌褉芯斜谢械屑褘')) {
+          el.innerHTML = strongTag.outerHTML + 'Chinese scientists have overcome the challenges of artificial breeding of giant pandas, increasing the success rate from about 30% in the early stages to over 90% in the present time.';
+        } 
+        else if (fullText.includes('鎴�?023�?) || 
+                fullText.includes('As of 2023, China has successfully released') ||
+                fullText.includes('袩芯 褋芯褋褌芯褟薪懈�?薪邪 2023 谐芯�?袣懈褌邪�?褍褋锌械褕薪�?胁褘锌褍褋褌懈谢')) {
+          el.innerHTML = strongTag.outerHTML + 'As of 2023, China has successfully released more than 25 captive-bred giant pandas to the wild, many of which have successfully bred offspring.';
+        } 
+        else if (fullText.includes('閫氳繃绾㈠鐩告満鐩戞祴绛夋妧�?) || 
+                fullText.includes('Through technologies such as infrared camera') ||
+                fullText.includes('�?锌芯屑芯褖褜�?褌邪泻懈�?褌械褏薪芯谢芯谐懈泄, 泻邪�?屑芯薪懈褌芯褉懈薪谐')) {
+          el.innerHTML = strongTag.outerHTML + 'Through technologies such as infrared camera monitoring, researchers have gained a deeper understanding of the behavior patterns of wild giant pandas.';
+        } 
+        else if (fullText.includes('鐮旂┒浜哄憳宸茬粡璇嗗埆骞惰兘澶熸湁鏁堟不锟?) || 
+                fullText.includes('Researchers have identified and can effectively treat') ||
+                fullText.includes('袠褋褋谢械写芯胁邪褌械谢�?懈写械薪褌懈褎懈褑懈褉芯胁邪谢懈 �?屑芯谐褍�?褝褎褎械泻褌懈胁薪芯')) {
+          el.innerHTML = strongTag.outerHTML + 'Researchers have identified and can effectively treat common diseases among giant pandas, significantly reducing mortality rates.';
+        }
+        // 淇濇姢鎺柦閮ㄥ�?
+        else if (fullText.includes('涓浗寤虹珛�?7涓嚜鐒朵繚鎶ゅ�?) || 
+                fullText.includes('China has established 67 nature reserves') ||
+                fullText.includes('袣懈褌邪�?褋芯蟹写邪谢 67 锌褉懈褉芯写薪褘�?蟹邪锌芯胁械写薪懈泻芯胁')) {
+          el.innerHTML = strongTag.outerHTML + 'China has established 67 nature reserves with a total area of more than 1,300,000 hectares, protecting about 54% of the giant panda habitat and covering about 67% of the wild giant panda population.';
+        } 
+        else if (fullText.includes('2021�?0鏈堬紝涓浗澶х唺鐚浗瀹跺叕鍥寮忚锟?) || 
+                fullText.includes('In October 2021, the China Giant Panda National Park') ||
+                fullText.includes('�?芯泻褌褟斜褉�?2021 谐芯写邪 斜褘�?芯褎懈褑懈邪谢褜薪芯 褋芯蟹写邪薪')) {
+          el.innerHTML = strongTag.outerHTML + 'In October 2021, the China Giant Panda National Park was officially established, with an area of 27,134 square kilometers, covering about 70% of the giant panda habitat and uniting 3 provinces\' panda reserves.';
+        } 
+        else if (fullText.includes('閫氳繃寤鸿鐢熸€佸粖閬撹繛鎺ュ垎鏁ｇ殑澶х唺鐚爾鎭湴') || 
+                fullText.includes('By building ecological corridors') ||
+                fullText.includes('袩褍褌械�?褋褌褉芯懈褌械谢褜褋褌胁�?褝泻芯谢芯谐懈褔械褋泻懈�?泻芯褉懈写芯褉芯�?)) {
+          el.innerHTML = strongTag.outerHTML + 'By building ecological corridors to connect isolated habitats of giant pandas, it promotes interpopulation gene flow and increases genetic diversity.';
+        } 
+        else if (fullText.includes('涓浗澶х唺鐚繚鎶ょ爺绌朵腑蹇冪瓑鏈烘�?) || 
+                fullText.includes('Institutions such as the China Conservation') ||
+                fullText.includes('孝邪泻懈�?褍褔褉械卸写械薪懈褟, 泻邪�?袣懈褌邪泄褋泻懈�?褑械薪褌�?)) {
+          el.innerHTML = strongTag.outerHTML + 'Institutions such as the China Conservation Research Center of Giant Pandas have made significant breakthroughs in breeding, disease prevention, and wild reintroduction, with more than 600 giant pandas in captivity.';
+        } 
+        else if (fullText.includes('涓浗涓庡涓浗瀹跺拰鍥介檯缁勭粐寮€灞曞ぇ鐔婄尗淇濇姢鍚堜�?) || 
+                fullText.includes('China conducts giant panda conservation cooperation') ||
+                fullText.includes('袣懈褌邪�?芯褋褍褖械褋褌胁谢褟械褌 褋芯褌褉褍写薪懈褔械褋褌胁芯')) {
+          el.innerHTML = strongTag.outerHTML + 'China conducts giant panda conservation cooperation with multiple countries and international organizations for scientific research and public education.';
+        }
+        // 濞佽儊閮ㄥ垎
+        else if (fullText.includes('鏍栨伅鍦扮牬纰庡�?) || 
+                fullText.includes('Habitat fragmentation') ||
+                fullText.includes('肖褉邪谐屑械薪褌邪褑懈褟 褋褉械写�?芯斜懈褌邪薪懈褟')) {
+          el.innerHTML = strongTag.outerHTML + 'Habitat fragmentation: Roads, hydroelectric power stations, and other constructions divide habitats of giant pandas into isolated small areas, impeding gene flow.';
+        } 
+        else if (fullText.includes('姘斿€欏彉锟?) || 
+                fullText.includes('Climate change') ||
+                fullText.includes('袠蟹屑械薪械薪懈�?泻谢懈屑邪褌�?)) {
+          el.innerHTML = strongTag.outerHTML + 'Climate change: Global warming may alter the flowering cycle of bamboo, the main food source of giant pandas, affecting food supply.';
+        } 
+        else if (fullText.includes('绔瑰瓙寮€鑺辨灟�?) || 
+                fullText.includes('Bamboo flowering and die-off') ||
+                fullText.includes('笑胁械褌械薪懈械 �?芯褌屑懈褉邪薪懈�?斜邪屑斜褍泻�?)) {
+          el.innerHTML = strongTag.outerHTML + 'Bamboo flowering and die-off: After flowering, bamboo completely dies and takes several years to regenerate, causing starvation among giant pandas.';
+        } 
+        else if (fullText.includes('浜虹被娲诲姩骞叉�?) || 
+                fullText.includes('Human activity disturbance') ||
+                fullText.includes('袧邪褉褍褕械薪懈�?褔械谢芯胁械褔械褋泻芯泄 写械褟褌械谢褜薪芯褋褌褜�?)) {
+          el.innerHTML = strongTag.outerHTML + 'Human activity disturbance: Tourism, collection, and other activities may disturb the normal life of giant pandas.';
+        }
+      }
+    });
+    
+  } else if (language === 'ru') {
+    // 淇勬枃缈昏瘧
+    if (pageTitle) pageTitle.textContent = '协薪褑懈泻谢芯锌械写懈褔械褋泻懈�?蟹薪邪薪懈褟 �?锌邪薪写邪褏';
+    
+    // 缈昏瘧鏍囬鍏冪�?
+    titleElements.forEach(el => {
+      // 鏀寔浠庤嫳鏂囧垏鎹㈠埌淇勬枃
+      const originalText = el.textContent;
+      
+      // 灏嗚嫳鏂囨爣棰樻槧灏勫洖涓枃鏍囬锛屽啀缈昏瘧鎴愪縿�?      let chineseText = '';
+      if (originalText === 'Basic Information about Giant Pandas') {
+        chineseText = '澶х唺鐚熀鏈俊锟?;
+      } else if (originalText === 'Living Habits') {
+        chineseText = '鐢熸椿涔狅拷?;
+      } else if (originalText === 'Conservation Status') {
+        chineseText = '淇濇姢鐜扮姸';
+      } else if (originalText === 'Research Achievements') {
+        chineseText = '鐮旂┒鎴愬氨';
+      } else if (originalText === 'Cultural Significance') {
+        chineseText = '鏂囧寲鎰忎箟';
+      } else if (originalText === 'Multi-language Translation') {
+        chineseText = '澶氳瑷€缈昏瘧';
+      } else {
+        chineseText = originalText; // 鍙兘宸茬粡鏄腑鏂囨垨淇勬�?
+      }
+      
+      // 灏嗕腑鏂囨爣棰樼炕璇戞垚淇勬�?
+      switch (chineseText) {
+        case '澶х唺鐚熀鏈俊锟?:
+          el.textContent = '袨褋薪芯胁薪邪褟 懈薪褎芯褉屑邪褑懈褟 �?斜芯谢褜褕懈�?锌邪薪写邪褏';
+          break;
+        case '鐢熸椿涔狅拷?:
+          el.textContent = '袩褉懈胁褘褔泻懈 卸懈蟹薪�?;
+          break;
+        case '淇濇姢鐜扮姸':
+          el.textContent = '小褌邪褌褍褋 芯褏褉邪薪褘';
+          break;
+        case '鐮旂┒鎴愬氨':
+          el.textContent = '袠褋褋谢械写芯胁邪褌械谢褜褋泻懈�?写芯褋褌懈卸械薪懈褟';
+          break;
+        case '鏂囧寲鎰忎箟':
+          el.textContent = '袣褍谢褜褌褍褉薪芯械 蟹薪邪褔械薪懈械';
+          break;
+        case '澶氳瑷€缈昏瘧':
+          el.textContent = '袦薪芯谐芯褟蟹褘褔薪褘泄 锌械褉械胁芯�?;
+          break;
+      }
+    });
+    
+    // 缈昏瘧娈佃惤鏂囨湰锛堢畝鍖栫ず渚嬶紝瀹為檯搴旂敤涓彲浠ユ洿璇︾粏锟?    paragraphElements.forEach(el => {
+      // 閽堝鐗瑰畾娈佃惤杩涜缈昏�?
+      if (el.textContent.includes('澶х唺鐚槸涓栫晫涓婃渶鍙楁杩庣殑婵掑嵄鍔ㄧ墿涔嬩竴') || 
+          el.textContent.includes('Giant pandas are one of the most popular endangered animals')) {
+        el.textContent = '袘芯谢褜褕邪�?锌邪薪写�?褟胁谢褟械褌褋褟 芯写薪懈�?懈蟹 褋邪屑褘�?锌芯锌褍谢褟褉薪褘褏 懈褋褔械蟹邪褞褖懈褏 卸懈胁芯褌薪褘褏 �?屑懈褉械. 袙蟹褉芯褋谢褘械 斜芯谢褜褕懈�?锌邪薪写�?懈屑械褞�?写谢懈薪�?芯泻芯谢�?1,2-1,5 屑械褌褉�?�?胁械�?芯泻芯谢�?100-150 泻谐. 袨薪�?懈屑械褞�?褏邪褉邪泻褌械褉薪褘�?褔械褉薪�?斜械谢褘�?芯泻褉邪�? �?褔械褉薪褘屑�?褔邪褋褌褟屑�?胁芯泻褉褍谐 谐谢邪蟹, 褍褕械泄, 薪芯褋邪, 锌谢械褔 �?泻芯薪械褔薪芯褋褌械�? �?芯褋褌邪谢褜薪邪�?褔邪褋褌�?斜械谢邪�?';
+      } else if (el.textContent.includes('澶х唺鐚嫢鏈夌嫭鐗圭�?绗叚锟?') || 
+                el.textContent.includes('Giant pandas have a unique "sixth finger"')) {
+        el.textContent = '袘芯谢褜褕懈�?锌邪薪写�?懈屑械褞�?褍薪懈泻邪谢褜薪褘泄 "褕械褋褌芯泄 锌邪谢械�? (褝胁芯谢褞褑懈芯薪懈褉芯胁邪胁褕懈泄 懈蟹 蟹邪锌褟褋褌薪芯�?泻芯褋褌�?, 泻芯褌芯褉褘�?锌芯蟹胁芯谢褟械�?懈屑 谢械谐泻�?褏胁邪褌邪褌�?斜邪屑斜褍泻. 啸芯褌褟 懈褏 锌懈褖械胁邪褉懈褌械谢褜薪邪�?褋懈褋褌械屑�?锌褉懈薪邪写谢械卸懈�?�?锌谢芯褌芯褟写薪褘屑, 芯薪�?邪写邪锌褌懈褉芯胁邪谢邪褋褜 �?褉邪褑懈芯薪�? 褋芯褋褌芯褟褖械屑褍 �?芯褋薪芯胁薪芯屑 懈蟹 斜邪屑斜褍泻�?';
+      } else if (el.textContent.includes('鐩墠锛岄噹鐢熷ぇ鐔婄尗涓昏鍒嗗竷鍦ㄤ腑鍥藉洓宸濈�?) || 
+                el.textContent.includes('Currently, wild giant pandas are mainly distributed')) {
+        el.textContent = '�?薪邪褋褌芯褟褖械�?胁褉械屑�?写懈泻懈�?斜芯谢褜褕懈�?锌邪薪写�?�?芯褋薪芯胁薪芯屑 褉邪褋锌褉芯褋褌褉邪薪械薪褘 �?谐芯褉薪褘褏 褉邪泄芯薪邪�?锌褉芯胁懈薪褑懈�?小褘褔褍邪薪�?(芯泻芯谢�?1200), 锌褉芯胁懈薪褑懈�?楔褝薪褜褋懈 (斜芯谢械�?300) �?锌褉芯胁懈薪褑懈�?袚邪薪褜褋褍 (斜芯谢械�?100) �?袣懈褌邪�? �?芯斜褖懈�?泻芯谢懈褔械褋褌胁芯�?芯泻芯谢�?1900. 袨斜褖邪�?锌谢芯褖邪写�?蟹邪锌芯胁械写薪懈泻芯胁 斜芯谢褜褕懈�?锌邪薪写 写芯褋褌懈谐谢邪 芯泻芯谢�?2,6 屑懈谢谢懈芯薪邪 谐械泻褌邪褉芯胁.';
+      } else if (el.textContent.includes('澶х唺鐚湪涓浗鏂囧寲鍜屽浗闄呬氦寰€涓叿鏈夐噸瑕佸湴�?) ||
+                el.textContent.includes('Giant pandas hold an important position')) {
+        el.textContent = '袘芯谢褜褕懈�?锌邪薪写�?蟹邪薪懈屑邪褞褌 胁邪卸薪芯械 屑械褋褌�?�?泻懈褌邪泄褋泻芯�?泻褍谢褜褌褍褉械 �?屑械卸写褍薪邪褉芯写薪褘�?芯褌薪芯褕械薪懈褟褏:';
+      } else if (el.textContent.includes('澶х唺鐚爺绌跺湪杩戝嚑鍗佸勾鍙栧緱浜嗘樉钁楄繘锟?) ||
+                el.textContent.includes('Giant panda research has made significant progress')) {
+        el.textContent = '袠褋褋谢械写芯胁邪薪懈褟 斜芯谢褜褕懈�?锌邪薪写 写芯褋褌懈谐谢懈 蟹薪邪褔懈褌械谢褜薪芯谐�?锌褉芯谐褉械褋褋�?蟹邪 锌芯褋谢械写薪懈�?写械褋褟褌懈谢械褌懈�?';
+      } else if (el.textContent.includes('涓浗鏀垮簻瀹炴柦鐨勪繚鎶ゆ帾鏂藉寘�?) ||
+                el.textContent.includes('Conservation measures implemented by the Chinese government')) {
+        el.textContent = '袦械褉褘 锌芯 芯褏褉邪薪械, 褉械邪谢懈蟹褍械屑褘�?锌褉邪胁懈褌械谢褜褋褌胁芯屑 袣懈褌邪�? 胁泻谢褞褔邪褞褌:';
+      } else if (el.textContent.includes('闈复鐨勪富瑕佸▉锟?) ||
+                el.textContent.includes('Main threats faced')) {
+        el.textContent = '袨褋薪芯胁薪褘械 褍谐褉芯蟹褘:';
+      } else if (el.textContent.includes('閫夋嫨浠ヤ笅璇█鏌ョ湅鐔婄尗鐭ヨ瘑鐨勭炕璇戠増�?) ||
+                el.textContent.includes('Select the following languages to view')) {
+        el.textContent = '袙褘斜械褉懈褌械 褋谢械写褍褞褖懈�?褟蟹褘泻�?写谢�?锌褉芯褋屑芯褌褉�?锌械褉械胁械写械薪薪褘褏 胁械褉褋懈泄 蟹薪邪薪懈泄 �?锌邪薪写邪褏:';
+      }
+    });
+    
+    // 缈昏瘧鍒楄〃锟?    listItemElements.forEach(el => {
+      const strongTag = el.querySelector('strong');
+      if (strongTag) {
+        // 缈昏瘧灏忔爣棰橈紙甯︽湁strong鏍囩鐨勯儴鍒嗭�?
+        const subtitle = strongTag.textContent.replace('�?, '').replace(': ', '');
+        switch (subtitle) {
+          case '楗�?:
+          case 'Diet':
+          case '袩懈褌邪薪懈�?:
+            strongTag.textContent = '袩懈褌邪薪懈�? ';
+            break;
+          case '娲诲�?:
+          case 'Activity':
+          case '袗泻褌懈胁薪芯褋褌褜':
+            strongTag.textContent = '袗泻褌懈胁薪芯褋褌褜: ';
+            break;
+          case '绻佹�?:
+          case 'Reproduction':
+          case '袪邪蟹屑薪芯卸械薪懈�?:
+            strongTag.textContent = '袪邪蟹屑薪芯卸械薪懈�? ';
+            break;
+          case '瀵垮�?:
+          case 'Lifespan':
+          case '袩褉芯写芯谢卸懈褌械谢褜薪芯褋褌�?卸懈蟹薪�?:
+            strongTag.textContent = '袩褉芯写芯谢卸懈褌械谢褜薪芯褋褌�?卸懈蟹薪�? ';
+            break;
+          case '棰嗗湴琛屼负':
+          case 'Territorial Behavior':
+          case '孝械褉褉懈褌芯褉懈邪谢褜薪芯�?锌芯胁械写械薪懈�?:
+            strongTag.textContent = '孝械褉褉懈褌芯褉懈邪谢褜薪芯�?锌芯胁械写械薪懈�? ';
+            break;
+          case '浜ゆ祦鏂瑰紡':
+          case 'Communication Methods':
+          case '小锌芯褋芯斜�?泻芯屑屑褍薪懈泻邪褑懈懈':
+            strongTag.textContent = '小锌芯褋芯斜�?泻芯屑屑褍薪懈泻邪褑懈懈: ';
+            break;
+          case '娲诲姩瑙勫緥':
+          case 'Activity Patterns':
+          case '袪械卸懈�?邪泻褌懈胁薪芯褋褌懈':
+            strongTag.textContent = '袪械卸懈�?邪泻褌懈胁薪芯褋褌懈: ';
+            break;
+          case '浣撴俯璋冭妭':
+          case 'Temperature Regulation':
+          case '袪械谐褍谢褟褑懈�?褌械屑锌械褉邪褌褍褉�?:
+            strongTag.textContent = '袪械谐褍谢褟褑懈�?褌械屑锌械褉邪褌褍褉�? ';
+            break;
+          case '鍥藉疂鍦颁綅':
+          case 'National Treasure Status':
+          case '小褌邪褌褍褋 薪邪褑懈芯薪邪谢褜薪芯谐�?褋芯泻褉芯胁懈褖�?:
+            strongTag.textContent = '小褌邪褌褍褋 薪邪褑懈芯薪邪谢褜薪芯谐�?褋芯泻褉芯胁懈褖�? ';
+            break;
+          case '鍜屽钩鍙嬭皧浣匡�?:
+          case 'Peace and Friendship Ambassador':
+          case '袩芯褋芯�?屑懈褉邪 �?写褉褍卸斜褘':
+            strongTag.textContent = '袩芯褋芯�?屑懈褉邪 �?写褉褍卸斜褘: ';
+            break;
+          case '淇濇姢璞″緛':
+          case 'Conservation Symbol':
+          case '小懈屑胁芯谢 芯褏褉邪薪褘 锌褉懈褉芯写�?:
+            strongTag.textContent = '小懈屑胁芯谢 芯褏褉邪薪褘 锌褉懈褉芯写�? ';
+            break;
+          case '鏃呮父璧勬簮':
+          case 'Tourism Resource':
+          case '孝褍褉懈褋褌懈褔械褋泻懈�?褉械褋褍褉褋':
+            strongTag.textContent = '孝褍褉懈褋褌懈褔械褋泻懈�?褉械褋褍褉褋: ';
+            break;
+          case '鏂囧寲鍒涙剰浜т笟':
+          case 'Cultural Creative Industry':
+          case '袠薪写褍褋褌褉懈�?泻褍谢褜褌褍褉薪芯谐�?褌胁芯褉褔械褋褌胁邪':
+            strongTag.textContent = '袠薪写褍褋褌褉懈�?泻褍谢褜褌褍褉薪芯谐�?褌胁芯褉褔械褋褌胁邪: ';
+            break;
+          case '鍩哄洜缁勬祴�?:
+          case 'Genome Sequencing':
+          case '小械泻胁械薪懈褉芯胁邪薪懈械 谐械薪芯屑邪':
+            strongTag.textContent = '小械泻胁械薪懈褉芯胁邪薪懈械 谐械薪芯屑邪: ';
+            break;
+          case '浜哄伐绻佽偛鎶€�?:
+          case 'Artificial Breeding Technology':
+          case '孝械褏薪芯谢芯谐懈褟 懈褋泻褍褋褋褌胁械薪薪芯谐芯 褉邪蟹胁械写械薪懈褟':
+            strongTag.textContent = '孝械褏薪芯谢芯谐懈褟 懈褋泻褍褋褋褌胁械薪薪芯谐芯 褉邪蟹胁械写械薪懈褟: ';
+            break;
+          case '閲庡寲鏀惧綊':
+          case 'Rewilding and Release':
+          case '袪械懈薪褌褉芯写褍泻褑懈�?�?写懈泻褍�?锌褉懈褉芯写�?:
+            strongTag.textContent = '袪械懈薪褌褉芯写褍泻褑懈�?�?写懈泻褍�?锌褉懈褉芯写�? ';
+            break;
+          case '琛屼负瀛︾爺锟?:
+          case 'Behavioral Studies':
+          case '袠褋褋谢械写芯胁邪薪懈褟 锌芯胁械写械薪懈�?:
+            strongTag.textContent = '袠褋褋谢械写芯胁邪薪懈褟 锌芯胁械写械薪懈�? ';
+            break;
+          case '鐤剧梾闃叉帶':
+          case 'Disease Prevention and Control':
+          case '袩褉芯褎懈谢邪泻褌懈泻邪 �?泻芯薪褌褉芯谢褜 蟹邪斜芯谢械胁邪薪懈�?:
+            strongTag.textContent = '袩褉芯褎懈谢邪泻褌懈泻邪 �?泻芯薪褌褉芯谢褜 蟹邪斜芯谢械胁邪薪懈�? ';
+            break;
+          case '鏍栨伅鍦颁繚�?:
+          case 'Habitat Protection':
+          case '袟邪褖懈褌邪 褋褉械写�?芯斜懈褌邪薪懈褟':
+            strongTag.textContent = '袟邪褖懈褌邪 褋褉械写�?芯斜懈褌邪薪懈褟: ';
+            break;
+          case '鍥藉鍏洯寤鸿':
+          case 'National Park Construction':
+          case '小褌褉芯懈褌械谢褜褋褌胁�?薪邪褑懈芯薪邪谢褜薪褘褏 锌邪褉泻芯胁':
+            strongTag.textContent = '小褌褉芯懈褌械谢褜褋褌胁�?薪邪褑懈芯薪邪谢褜薪褘褏 锌邪褉泻芯胁: ';
+            break;
+          case '鐢熸€佸粖閬撳缓�?:
+          case 'Ecological Corridor Construction':
+          case '小褌褉芯懈褌械谢褜褋褌胁�?褝泻芯谢芯谐懈褔械褋泻懈�?泻芯褉懈写芯褉芯�?:
+            strongTag.textContent = '小褌褉芯懈褌械谢褜褋褌胁�?褝泻芯谢芯谐懈褔械褋泻懈�?泻芯褉懈写芯褉芯�? ';
+            break;
+          case '绉戠爺绻佽偛':
+          case 'Scientific Research and Breeding':
+          case '袧邪褍褔薪褘�?懈褋褋谢械写芯胁邪薪懈褟 �?褉邪蟹胁械写械薪懈械':
+            strongTag.textContent = '袧邪褍褔薪褘�?懈褋褋谢械写芯胁邪薪懈褟 �?褉邪蟹胁械写械薪懈械: ';
+            break;
+          case '鍥介檯鍚堜綔':
+          case 'International Cooperation':
+          case '袦械卸写褍薪邪褉芯写薪芯�?褋芯褌褉褍写薪懈褔械褋褌胁芯':
+            strongTag.textContent = '袦械卸写褍薪邪褉芯写薪芯�?褋芯褌褉褍写薪懈褔械褋褌胁芯: ';
+            break;
+        }
+        
+        // 缈昏瘧鍒楄〃椤瑰唴�?        // 鑾峰彇鍒楄〃椤圭殑瀹屾暣鏂囨湰鍐呭�?
+        const fullText = el.textContent;
+        
+        // 淇勮缈昏瘧鍒楄〃椤瑰唴�?        // 澶х唺鐚壒鎬ф弿锟?        if (fullText.includes('澶х唺鐚槸鏉傞鎬у姩�?) || 
+            fullText.includes('Giant pandas are omnivorous animals')) {
+          el.innerHTML = strongTag.outerHTML + '袘芯谢褜褕懈�?锌邪薪写�?- 褝褌�?胁褋械褟写薪褘械 卸懈胁芯褌薪褘械, 薪芯 �?芯褋薪芯胁薪芯屑 锌懈褌邪褞褌褋褟 斜邪屑斜褍泻芯屑. 袨薪�?谢褞斜褟�?械褋褌褜 斜芯谢械�?20 胁懈写芯�?斜邪屑斜褍泻�? 胁泻谢褞褔邪�?褋褌褉械谢芯胁懈写薪褘泄 斜邪屑斜褍泻 �?斜邪屑斜褍泻-褌褉芯褋褌褜, �?褌邪泻卸�?械写褟褌 写懈泻懈�?褎褉褍泻褌褘, 褌褉邪胁�? 薪邪褋械泻芯屑褘�?�?�?�?';
+        } 
+        else if (fullText.includes('澶х唺鐚€ф牸娓╅�?) || 
+                fullText.includes('Giant pandas have a gentle temperament')) {
+          el.innerHTML = strongTag.outerHTML + '袘芯谢褜褕懈�?锌邪薪写�?懈屑械褞�?屑褟谐泻懈泄 褏邪褉邪泻褌械褉, 胁械写褍�?芯写懈薪芯褔薪褘�?芯斜褉邪�?卸懈蟹薪�? 锌褉械写锌芯褔懈褌邪褞褌 褌懈褕懈薪褍, 写胁懈谐邪褞褌褋�?屑械写谢械薪薪芯 �?锌褉芯胁芯写褟褌 斜芯谢褜褕褍�?褔邪褋褌�?胁褉械屑械薪�?�?锌芯懈褋泻邪�?锌懈褖懈 �?芯褌写褘褏械.';
+        } 
+        else if (fullText.includes('澶х唺鐚€ф垚鐔熷勾锟?) || 
+                fullText.includes('Giant pandas reach sexual maturity')) {
+          el.innerHTML = strongTag.outerHTML + '袘芯谢褜褕懈�?锌邪薪写�?写芯褋褌懈谐邪褞�?锌芯谢芯胁芯�?蟹褉械谢芯褋褌懈 �?胁芯蟹褉邪褋褌械 5,5-6,5 谢械�? 袠褏 褋械蟹芯�?褋锌邪褉懈胁邪薪懈褟 写谢懈褌褋褟 �?屑邪褉褌�?锌芯 屑邪�? �?锌械褉懈芯写芯屑 斜械褉械屑械薪薪芯褋褌懈 83-200 写薪械泄, 芯斜褘褔薪芯 褉芯卸写邪械褌褋�?1-2 写械褌械薪褘褕邪 胁械褋芯�?芯泻芯谢�?150 谐褉邪屑屑芯�?锌褉�?褉芯卸写械薪懈懈.';
+        } 
+        else if (fullText.includes('閲庣敓澶х唺鐚钩鍧囧锟?) || 
+                fullText.includes('Wild giant pandas have an average lifespan')) {
+          el.innerHTML = strongTag.outerHTML + '袛懈泻懈�?斜芯谢褜褕懈�?锌邪薪写�?懈屑械褞�?褋褉械写薪褞�?锌褉芯写芯谢卸懈褌械谢褜薪芯褋褌�?卸懈蟹薪�?芯泻芯谢�?20 谢械�? �?褌芯 胁褉械屑�?泻邪�?锌邪薪写�?�?薪械胁芯谢械 屑芯谐褍�?卸懈褌褜 写芯 25-30 谢械�?';
+        } 
+        else if (fullText.includes('澶х唺鐚槸鐙眳鍔ㄧ墿') || 
+                fullText.includes('Giant pandas are solitary animals')) {
+          el.innerHTML = strongTag.outerHTML + '袘芯谢褜褕懈�?锌邪薪写�?- 芯写懈薪芯褔薪褘�?卸懈胁芯褌薪褘械, �?�?泻邪卸写芯泄 斜芯谢褜褕芯�?锌邪薪写�?械褋褌褜 褋胁芯褟 褌械褉褉懈褌芯褉懈褟. 袨薪�?芯褌屑械褔邪褞褌 褋胁芯褞 褌械褉褉懈褌芯褉懈褞, 芯褋褌邪胁谢褟褟 蟹邪锌邪褏芯胁褘�?屑械褌泻�?薪邪 写械褉械胁褜褟褏 �?褑邪褉邪锌邪�?泻芯褉褍. 孝械褉褉懈褌芯褉懈褟 胁蟹褉芯褋谢芯谐�?褋邪屑褑�?斜芯谢褜褕芯�?锌邪薪写�?褋芯褋褌邪胁谢褟械褌 芯泻芯谢�?3-7 泻胁邪写褉邪褌薪褘褏 泻懈谢芯屑械褌褉芯胁, �?褌芯 胁褉械屑�?泻邪�?褌械褉褉懈褌芯褉懈褟 褋邪屑芯�?芯褌薪芯褋懈褌械谢褜薪芯 屑械薪褜褕械.';
+        } 
+        else if (fullText.includes('澶х唺鐚€氳繃澶氱澹伴�?) || 
+                fullText.includes('Giant pandas communicate through various sounds')) {
+          el.innerHTML = strongTag.outerHTML + '袘芯谢褜褕懈�?锌邪薪写�?芯斜褖邪褞褌褋褟 �?锌芯屑芯褖褜�?褉邪蟹谢懈褔薪褘�?蟹胁褍泻芯胁, 胁泻谢褞褔邪�?斜谢械褟薪懈�? 褉褘褔邪薪懈�?�?褔懈褉懈泻邪薪褜�? 袠褏 泻褉懈泻�?芯褋芯斜械薪薪芯 蟹邪屑械褌薪�?�?褋械蟹芯�?褉邪蟹屑薪芯卸械薪懈�? 袣褉芯屑�?褌芯谐芯, 芯薪�?褌邪泻卸�?芯斜褖邪褞褌褋褟 泻芯褋胁械薪薪芯 褔械褉械�?蟹邪锌邪褏芯胁褘�?屑械褌泻�?';
+        } 
+        else if (fullText.includes('澶х唺鐚竴澶╀腑锟?0-16灏忔�?) || 
+                fullText.includes('Giant pandas spend 10-16 hours a day')) {
+          el.innerHTML = strongTag.outerHTML + '袘芯谢褜褕懈�?锌邪薪写�?锌褉芯胁芯写褟褌 10-16 褔邪褋芯�?�?写械薪褜 �?锌芯懈褋泻邪�?锌懈褖懈, �?芯褋褌邪谢褜薪芯�?胁褉械屑�?�?芯褋薪芯胁薪芯屑 懈褋锌芯谢褜蟹褍械褌褋褟 写谢�?芯褌写褘褏邪. 袨薪�?褟胁谢褟褞褌褋褟 泻邪�?写薪械胁薪褘屑懈, 褌邪�?�?薪芯褔薪褘屑�?卸懈胁芯褌薪褘屑�? 薪芯 �?褉邪泄芯薪邪�?�?褔邪褋褌芯泄 褔械谢芯胁械褔械褋泻芯泄 写械褟褌械谢褜薪芯褋褌褜�?芯薪�?褋泻谢芯薪薪�?斜褘褌褜 斜芯谢械�?邪泻褌懈胁薪褘屑�?薪芯褔褜�?';
+        } 
+        else if (fullText.includes('澶х唺鐚枩娆㈠噳鐖界殑鐜') || 
+                fullText.includes('Giant pandas prefer cool environments')) {
+          el.innerHTML = strongTag.outerHTML + '袘芯谢褜褕懈�?锌邪薪写�?锌褉械写锌芯褔懈褌邪褞褌 锌褉芯褏谢邪写薪褍褞 褋褉械写�? �?锌芯写褏芯写褟褖懈屑�?褌械屑锌械褉邪褌褍褉邪屑�?芯褌 17 写芯 25掳C. 袥械褌芯�?芯薪�?锌械褉械屑械褖邪褞褌褋褟 薪邪 斜芯谢褜褕懈�?胁褘褋芯褌褘, 褔褌芯斜�?懈蟹斜械卸邪褌褜 卸邪褉褘; 蟹懈屑芯�?锌械褉械屑械褖邪褞褌褋褟 薪邪 斜芯谢械�?薪懈蟹泻懈械 胁褘褋芯褌褘.';
+        }
+        // 鏂囧寲鎰忎箟閮ㄥ�?
+        else if (fullText.includes('澶х唺鐚瑙嗕负涓浗鐨勫浗�?) || 
+                fullText.includes('Giant pandas are regarded as China\'s national treasure')) {
+          el.innerHTML = strongTag.outerHTML + '袘芯谢褜褕懈�?锌邪薪写�?褋褔懈褌邪褞褌褋�?薪邪褑懈芯薪邪谢褜薪褘屑 褋芯泻褉芯胁懈褖械屑 袣懈褌邪�? 褋懈屑胁芯谢芯屑 褍薪懈泻邪谢褜薪芯谐�?泻褍谢褜褌褍褉薪芯谐�?薪邪褋谢械写懈褟 �?斜懈芯褉邪蟹薪芯芯斜褉邪蟹懈�?袣懈褌邪�?';
+        } 
+        else if (fullText.includes('�?950骞翠唬寮€锟?) || 
+                fullText.includes('Since the 1950s, China has promoted')) {
+          el.innerHTML = strongTag.outerHTML + '�?1950-�?谐芯写芯�?袣懈褌邪�?褋锌芯褋芯斜褋褌胁褍械褌 写褉褍卸械褋褌胁械薪薪褘�?芯褌薪芯褕械薪懈褟屑 �?写褉褍谐懈屑�?褋褌褉邪薪邪屑懈 锌芯褋褉械写褋褌胁芯�?"锌邪薪写芯胁芯泄 写懈锌谢芯屑邪褌懈懈".';
+        } 
+        else if (fullText.includes('涓栫晫鑷劧鍩洪噾锟?WWF)') || 
+                fullText.includes('The World Wildlife Fund (WWF) uses')) {
+          el.innerHTML = strongTag.outerHTML + '袙褋械屑懈褉薪褘�?褎芯薪写 写懈泻芯�?锌褉懈褉芯写�?(WWF) 懈褋锌芯谢褜蟹褍械褌 斜芯谢褜褕褍�?锌邪薪写�?�?泻邪褔械褋褌胁械 褋胁芯械谐芯 谢芯谐芯褌懈锌邪, 写械谢邪�?械械 蟹薪邪泻芯胁褘屑 芯斜褉邪蟹芯�?写谢�?谐谢芯斜邪谢褜薪芯泄 芯褏褉邪薪褘 写懈泻芯�?锌褉懈褉芯写�?';
+        } 
+        else if (fullText.includes('澶х唺鐚槸涓浗閲嶈鐨勬梾娓歌祫锟?) || 
+                fullText.includes('Giant pandas are an important tourism resource')) {
+          el.innerHTML = strongTag.outerHTML + '袘芯谢褜褕懈�?锌邪薪写�?褟胁谢褟褞褌褋褟 胁邪卸薪褘屑 褌褍褉懈褋褌懈褔械褋泻懈�?褉械褋褍褉褋芯屑 �?袣懈褌邪�? 锌褉�?褝褌芯屑 袠褋褋谢械写芯胁邪褌械谢褜褋泻邪�?斜邪蟹邪 褉邪蟹胁械写械薪懈褟 斜芯谢褜褕懈�?锌邪薪写 �?效褝薪写�?械卸械谐芯写薪芯 锌褉懈胁谢械泻邪械褌 屑懈谢谢懈芯薪褘 锌芯褋械褌懈褌械谢械�?';
+        } 
+        else if (fullText.includes('澶х唺鐚舰璞″箍娉涘簲鐢ㄤ簬鏂囧垱浜у�?) || 
+                fullText.includes('Giant panda images are widely used')) {
+          el.innerHTML = strongTag.outerHTML + '袠蟹芯斜褉邪卸械薪懈�?斜芯谢褜褕懈�?锌邪薪写 褕懈褉芯泻芯 懈褋锌芯谢褜蟹褍褞褌褋褟 �?泻褍谢褜褌褍褉薪褘褏 �?褌胁芯褉褔械褋泻懈褏 锌褉芯写褍泻褌邪�? 邪薪懈屑邪褑懈懈, 褎懈谢褜屑邪�?�?写褉褍谐懈褏 小袦�? 褋芯蟹写邪胁邪褟 芯谐褉芯屑薪褍褞 褝泻芯薪芯屑懈褔械褋泻褍�?褑械薪薪芯褋褌褜.';
+        }
+        // 鐮旂┒鎴愬氨閮ㄥ�?
+        else if (fullText.includes('2010骞达紝绉戝瀹跺畬鎴愪簡澶х唺鐚叏鍩哄洜缁勬祴锟?) || 
+                fullText.includes('In 2010, scientists completed the giant panda genome')) {
+          el.innerHTML = strongTag.outerHTML + '�?2010 谐芯写褍 褍褔械薪褘械 蟹邪胁械褉褕懈谢�?褋械泻胁械薪懈褉芯胁邪薪懈械 谐械薪芯屑邪 斜芯谢褜褕芯�?锌邪薪写�? 锌褉械写芯褋褌邪胁懈�?胁邪卸薪褍褞 芯褋薪芯胁褍 写谢�?懈蟹褍褔械薪懈褟 褝胁芯谢褞褑懈芯薪薪芯泄 懈褋褌芯褉懈�?�?褋芯褏褉邪薪械薪懈褟 斜芯谢褜褕懈�?锌邪薪写.';
+        } 
+        else if (fullText.includes('涓浗绉戝瀹舵敾鍏嬩簡澶х唺鐚汉宸ョ箒鑲查毦锟?) || 
+                fullText.includes('Chinese scientists have overcome the challenges')) {
+          el.innerHTML = strongTag.outerHTML + '袣懈褌邪泄褋泻懈�?褍褔械薪褘械 锌褉械芯写芯谢械谢懈 锌褉芯斜谢械屑褘 懈褋泻褍褋褋褌胁械薪薪芯谐芯 褉邪蟹胁械写械薪懈褟 斜芯谢褜褕懈�?锌邪薪写, 褍胁械谢懈褔懈胁 锌褉芯褑械薪�?褍褋锌械褏邪 �?锌褉懈屑械褉薪芯 30% �?薪邪褔邪谢械 写芯 斜芯谢械�?褔械�?90% �?薪邪褋褌芯褟褖械�?胁褉械屑�?';
+        } 
+        else if (fullText.includes('鎴�?023�?) || 
+                fullText.includes('As of 2023, China has successfully released')) {
+          el.innerHTML = strongTag.outerHTML + '袩芯 褋芯褋褌芯褟薪懈�?薪邪 2023 谐芯�?袣懈褌邪�?褍褋锌械褕薪�?胁褘锌褍褋褌懈谢 �?写懈泻褍�?锌褉懈褉芯写�?斜芯谢械�?25 胁褘褉邪褖械薪薪褘褏 �?薪械胁芯谢械 斜芯谢褜褕懈�?锌邪薪写, 屑薪芯谐懈械 懈蟹 泻芯褌芯褉褘�?褍褋锌械褕薪�?锌褉芯懈蟹胁械谢�?锌芯褌芯屑褋褌胁�?';
+        } 
+        else if (fullText.includes('閫氳繃绾㈠鐩告満鐩戞祴绛夋妧�?) || 
+                fullText.includes('Through technologies such as infrared camera')) {
+          el.innerHTML = strongTag.outerHTML + '�?锌芯屑芯褖褜�?褌邪泻懈�?褌械褏薪芯谢芯谐懈泄, 泻邪�?屑芯薪懈褌芯褉懈薪谐 懈薪褎褉邪泻褉邪褋薪褘屑�?泻邪屑械褉邪屑懈, 褍褔械薪褘械 锌芯谢褍褔懈谢懈 斜芯谢械�?谐谢褍斜芯泻芯械 锌芯薪懈屑邪薪懈�?锌芯胁械写械薪褔械褋泻懈�?锌褉懈胁褘褔械泻 写懈泻懈�?斜芯谢褜褕懈�?锌邪薪写.';
+        } 
+        else if (fullText.includes('鐮旂┒浜哄憳宸茬粡璇嗗埆骞惰兘澶熸湁鏁堟不锟?) || 
+                fullText.includes('Researchers have identified and can effectively treat')) {
+          el.innerHTML = strongTag.outerHTML + '袠褋褋谢械写芯胁邪褌械谢�?懈写械薪褌懈褎懈褑懈褉芯胁邪谢懈 �?屑芯谐褍�?褝褎褎械泻褌懈胁薪芯 谢械褔懈褌褜 褉邪褋锌褉芯褋褌褉邪薪械薪薪褘械 蟹邪斜芯谢械胁邪薪懈�?�?斜芯谢褜褕懈�?锌邪薪写, 蟹薪邪褔懈褌械谢褜薪�?褋薪懈卸邪褟 褍褉芯胁械薪�?褋屑械褉褌薪芯褋褌懈.';
+        }
+        // 淇濇姢鎺柦閮ㄥ�?
+        else if (fullText.includes('涓浗寤虹珛�?7涓嚜鐒朵繚鎶ゅ�?) || 
+                fullText.includes('China has established 67 nature reserves')) {
+          el.innerHTML = strongTag.outerHTML + '袣懈褌邪�?褋芯蟹写邪谢 67 锌褉懈褉芯写薪褘�?蟹邪锌芯胁械写薪懈泻芯胁 芯斜褖械�?锌谢芯褖邪写褜褞 斜芯谢械�?1 300 000 谐械泻褌邪褉芯胁, 蟹邪褖懈褖邪�?芯泻芯谢�?54% 褋褉械写�?芯斜懈褌邪薪懈褟 斜芯谢褜褕懈�?锌邪薪写 �?芯褏胁邪褌褘胁邪�?芯泻芯谢�?67% 锌芯锌褍谢褟褑懈�?写懈泻懈�?斜芯谢褜褕懈�?锌邪薪写.';
+        } 
+        else if (fullText.includes('2021�?0鏈堬紝涓浗澶х唺鐚浗瀹跺叕鍥寮忚锟?) || 
+                fullText.includes('In October 2021, the China Giant Panda National Park')) {
+          el.innerHTML = strongTag.outerHTML + '�?芯泻褌褟斜褉�?2021 谐芯写邪 斜褘�?芯褎懈褑懈邪谢褜薪芯 褋芯蟹写邪薪 袧邪褑懈芯薪邪谢褜薪褘泄 锌邪褉泻 斜芯谢褜褕懈�?锌邪薪写 袣懈褌邪�?锌谢芯褖邪写褜褞 27 134 泻胁邪写褉邪褌薪褘褏 泻懈谢芯屑械褌褉�? 芯褏胁邪褌褘胁邪褞褖懈泄 芯泻芯谢�?70% 械褋褌械褋褌胁械薪薪芯泄 褋褉械写�?芯斜懈褌邪薪懈褟 斜芯谢褜褕懈�?锌邪薪写 �?芯斜褗械写懈薪褟褞褖懈泄 蟹邪锌芯胁械写薪懈泻�?斜芯谢褜褕懈�?锌邪薪写 �?3 锌褉芯胁懈薪褑懈褟褏.';
+        } 
+        else if (fullText.includes('閫氳繃寤鸿鐢熸€佸粖閬撹繛鎺ュ垎鏁ｇ殑澶х唺鐚爾鎭湴') || 
+                fullText.includes('By building ecological corridors')) {
+          el.innerHTML = strongTag.outerHTML + '袩褍褌械�?褋褌褉芯懈褌械谢褜褋褌胁�?褝泻芯谢芯谐懈褔械褋泻懈�?泻芯褉懈写芯褉芯�?写谢�?褋芯械写懈薪械薪懈褟 褉邪蟹褉芯蟹薪械薪薪褘褏 屑械褋褌 芯斜懈褌邪薪懈褟 斜芯谢褜褕懈�?锌邪薪写, 褋锌芯褋芯斜褋褌胁褍械褌褋褟 芯斜屑械薪褍 锌芯锌褍谢褟褑懈褟屑�?�?锌芯胁褘褕邪械褌褋褟 谐械薪械褌懈褔械褋泻芯械 褉邪蟹薪芯芯斜褉邪蟹懈械.';
+        } 
+        else if (fullText.includes('涓浗澶х唺鐚繚鎶ょ爺绌朵腑蹇冪瓑鏈烘�?) || 
+                fullText.includes('Institutions such as the China Conservation')) {
+          el.innerHTML = strongTag.outerHTML + '孝邪泻懈�?褍褔褉械卸写械薪懈褟, 泻邪�?袣懈褌邪泄褋泻懈�?褑械薪褌�?芯褏褉邪薪褘 �?懈褋褋谢械写芯胁邪薪懈泄 斜芯谢褜褕懈�?锌邪薪写, 写芯斜懈谢懈褋褜 蟹薪邪褔懈褌械谢褜薪褘褏 锌褉芯褉褘胁芯胁 �?褉邪蟹胁械写械薪懈懈 斜芯谢褜褕懈�?锌邪薪写, 锌褉芯褎懈谢邪泻褌懈泻械 �?泻芯薪褌褉芯谢械 蟹邪斜芯谢械胁邪薪懈�? �?褌邪泻卸�?�?锌芯写谐芯褌芯胁泻械 �?褉械懈薪褌褉芯写褍泻褑懈�? 锌褉�?褝褌芯屑 泻芯谢懈褔械褋褌胁芯 斜芯谢褜褕懈�?锌邪薪写 �?薪械胁芯谢械 锌褉械胁褘褕邪械�?600.';
+        } 
+        else if (fullText.includes('涓浗涓庡涓浗瀹跺拰鍥介檯缁勭粐寮€灞曞ぇ鐔婄尗淇濇姢鍚堜�?) || 
+                fullText.includes('China conducts giant panda conservation cooperation')) {
+          el.innerHTML = strongTag.outerHTML + '袣懈褌邪�?芯褋褍褖械褋褌胁谢褟械褌 褋芯褌褉褍写薪懈褔械褋褌胁芯 锌芯 褋芯褏褉邪薪械薪懈褞 斜芯谢褜褕懈�?锌邪薪写 �?薪械褋泻芯谢褜泻懈屑�?褋褌褉邪薪邪屑懈 �?屑械卸写褍薪邪褉芯写薪褘屑懈 芯褉谐邪薪懈蟹邪褑懈褟屑�?写谢�?薪邪褍褔薪褘�?懈褋褋谢械写芯胁邪薪懈泄 �?锌褉芯褋胁械褖械薪懈�?芯斜褖械褋褌胁械薪薪芯褋褌懈.';
+        }
+        // 濞佽儊閮ㄥ垎
+        else if (fullText.includes('鏍栨伅鍦扮牬纰庡�?) || 
+                fullText.includes('Habitat fragmentation')) {
+          el.innerHTML = strongTag.outerHTML + '肖褉邪谐屑械薪褌邪褑懈褟 褋褉械写�?芯斜懈褌邪薪懈褟: 袛芯褉芯谐懈, 谐懈写褉芯褝谢械泻褌褉芯褋褌邪薪褑懈�?�?写褉褍谐懈械 褋褌褉芯懈褌械谢褜褋褌胁�?褉邪蟹写械谢褟褞�?屑械褋褌�?芯斜懈褌邪薪懈褟 斜芯谢褜褕懈�?锌邪薪写 薪邪 懈蟹芯谢懈褉芯胁邪薪薪褘�?薪械斜芯谢褜褕懈�?褍褔邪褋褌泻�? 锌褉械锌褟褌褋褌胁褍�?谐械薪械褌懈褔械褋泻芯屑�?芯斜屑械薪褍.';
+        } 
+        else if (fullText.includes('姘斿€欏彉锟?) || 
+                fullText.includes('Climate change')) {
+          el.innerHTML = strongTag.outerHTML + '袠蟹屑械薪械薪懈�?泻谢懈屑邪褌�? 袚谢芯斜邪谢褜薪芯械 锌芯褌械锌谢械薪懈械 屑芯卸械�?锌褉懈胁械褋褌懈 �?懈蟹屑械薪械薪懈褟屑 �?褑懈泻谢�?褑胁械褌械薪懈褟 斜邪屑斜褍泻�? 芯褋薪芯胁薪芯谐�?懈褋褌芯褔薪懈泻�?锌懈褖懈 斜芯谢褜褕懈�?锌邪薪写, 胁谢懈褟�?薪邪 锌芯褋褌邪胁泻懈 锌褉芯写芯胁芯谢褜褋褌胁懈褟.';
+        } 
+        else if (fullText.includes('绔瑰瓙寮€鑺辨灟�?) || 
+                fullText.includes('Bamboo flowering and die-off')) {
+          el.innerHTML = strongTag.outerHTML + '笑胁械褌械薪懈械 �?芯褌屑懈褉邪薪懈�?斜邪屑斜褍泻�? 袩芯褋谢�?褑胁械褌械薪懈褟 斜邪屑斜褍泻 锌芯谢薪芯褋褌褜�?芯褌屑懈褉邪械褌 �?褌褉械斜褍械褌褋�?薪械褋泻芯谢褜泻�?谢械�?写谢�?械谐�?胁芯褋褋褌邪薪芯胁谢械薪懈褟, 褔褌�?�?锌褉芯褕谢芯�?胁褘蟹褘胁邪谢芯 谐芯谢芯写薪褍褞 褋屑械褉褌褜 斜芯谢褜褕懈�?锌邪薪写.';
+        } 
+        else if (fullText.includes('浜虹被娲诲姩骞叉�?) || 
+                fullText.includes('Human activity disturbance')) {
+          el.innerHTML = strongTag.outerHTML + '袧邪褉褍褕械薪懈�?褔械谢芯胁械褔械褋泻芯泄 写械褟褌械谢褜薪芯褋褌褜�? 孝褍褉懈蟹屑, 褋斜芯褉 �?写褉褍谐懈械 胁懈写褘 写械褟褌械谢褜薪芯褋褌懈 屑芯谐褍�?薪邪褉褍褕邪褌褜 薪芯褉屑邪谢褜薪褍褞 卸懈蟹薪�?斜芯谢褜褕懈�?锌邪薪写.';
+        }
+      }
+    });
+    
+  } else if (language === 'zh') {
+    // 鎭㈠涓枃鍘熸枃锛屼笉閲嶈浇椤甸潰
+    if (pageTitle) pageTitle.textContent = '鐔婄尗鐧剧鐭ヨ�?;
+    
+    // 鎭㈠鏍囬鍏冪�?
+    titleElements.forEach(el => {
+      if (el.textContent === 'Basic Information about Giant Pandas' || 
+          el.textContent === '袨褋薪芯胁薪邪褟 懈薪褎芯褉屑邪褑懈褟 �?斜芯谢褜褕懈�?锌邪薪写邪褏') {
+        el.textContent = '澶х唺鐚熀鏈俊锟?;
+      } else if (el.textContent === 'Living Habits' || 
+                el.textContent === '袩褉懈胁褘褔泻懈 卸懈蟹薪�?) {
+        el.textContent = '鐢熸椿涔狅拷?;
+      } else if (el.textContent === 'Conservation Status' || 
+                el.textContent === '小褌邪褌褍褋 芯褏褉邪薪褘') {
+        el.textContent = '淇濇姢鐜扮姸';
+      } else if (el.textContent === 'Research Achievements' || 
+                el.textContent === '袠褋褋谢械写芯胁邪褌械谢褜褋泻懈�?写芯褋褌懈卸械薪懈褟') {
+        el.textContent = '鐮旂┒鎴愬氨';
+      } else if (el.textContent === 'Cultural Significance' || 
+                el.textContent === '袣褍谢褜褌褍褉薪芯械 蟹薪邪褔械薪懈械') {
+        el.textContent = '鏂囧寲鎰忎箟';
+      } else if (el.textContent === 'Multi-language Translation' || 
+                el.textContent === '袦薪芯谐芯褟蟹褘褔薪褘泄 锌械褉械胁芯�?) {
+        el.textContent = '澶氳瑷€缈昏瘧';
+      }
+    });
+    
+    // 鎭㈠娈佃惤鏂囨�?
+    paragraphElements.forEach(el => {
+      // 杩欓噷鍙互娣诲姞鎭㈠涓枃鏂囨湰鐨勯€昏緫锛屼絾鐢变簬鍘熷HTML宸茬粡鍖呭惈涓枃鍐呭
+      // 鎴戜滑鍙互绠€鍗曞湴閲嶆柊鍔犺浇椤甸潰涓殑鍐呭锛岃€屼笉鏄皟鐢╨oadPandaKnowledge()
+      
+      // 鏌ユ壘鍖呭惈鐗瑰畾鑻辨枃鎴栦縿鏂囩殑娈佃惤锛屾仮澶嶄负涓枃
+      if (el.textContent.includes('Giant pandas are one of the most popular endangered animals') ||
+          el.textContent.includes('袘芯谢褜褕邪�?锌邪薪写�?褟胁谢褟械褌褋褟 芯写薪懈�?懈蟹 褋邪屑褘�?锌芯锌褍谢褟褉薪褘褏')) {
+        el.textContent = '澶х唺鐚槸涓栫晫涓婃渶鍙楁杩庣殑婵掑嵄鍔ㄧ墿涔嬩竴锛屾垚骞村ぇ鐔婄尗浣撻暱�?.2-1.5绫筹紝浣撻噸�?00-150鍗冨厠銆傚畠浠嫢鏈夋爣蹇楁€х殑榛戠櫧姣涜壊锛岄粦鑹查儴鍒嗗寘鎷溂鐫涘懆鍥淬€佽€虫湹銆侀蓟瀛愩€佽偐鑶€鍜屽洓鑲紝鍏朵綑閮ㄥ垎涓虹櫧鑹诧�?;
+      } else if (el.textContent.includes('Giant pandas have a unique "sixth finger"') ||
+                el.textContent.includes('袘芯谢褜褕懈�?锌邪薪写�?懈屑械褞�?褍薪懈泻邪谢褜薪褘泄 "褕械褋褌芯泄 锌邪谢械�?')) {
+        el.textContent = '澶х唺鐚嫢鏈夌嫭鐗圭�?绗叚锟?锛堣厱楠ㄦ紨鍙樿€屾潵鐨勬媷鎸囷級锛岃繖浣垮畠浠兘澶熻交鏉炬彙浣忕瀛愩€傚畠浠殑娑堝寲绯荤粺铏界劧灞炰簬椋熻倝鍔ㄧ墿锛屼絾宸茬粡閫傚簲浜嗕互绔瑰瓙涓轰富鐨勯ギ椋熶範鎯�?;
+      } else if (el.textContent.includes('Currently, wild giant pandas are mainly distributed') ||
+                el.textContent.includes('�?薪邪褋褌芯褟褖械�?胁褉械屑�?写懈泻懈�?斜芯谢褜褕懈�?锌邪薪写�?)) {
+        el.textContent = '鐩墠锛岄噹鐢熷ぇ鐔婄尗涓昏鍒嗗竷鍦ㄤ腑鍥藉洓宸濈渷锛堢害1,200鍙級銆侀檿瑗跨渷锛堢�?00澶氬彧锛夊拰鐢樿們鐪侊紙�?00澶氬彧锛夌殑灞卞尯锛屾€绘暟宸叉帴锟?,900鍙€傚ぇ鐔婄尗淇濇姢鍖烘€婚潰绉揪鍒扮害260涓囧叕椤凤拷?;
+      }
+    });
+    
+    // 鎭㈠鍒楄〃椤瑰唴�?    listItemElements.forEach(el => {
+      const strongTag = el.querySelector('strong');
+      if (strongTag) {
+        // 鎭㈠灏忔爣棰橈紙甯︽湁strong鏍囩鐨勯儴鍒嗭�?
+        const subtitle = strongTag.textContent.replace(': ', '');
+        switch (subtitle) {
+          case 'Diet':
+          case '袩懈褌邪薪懈�?:
+            strongTag.textContent = '楗锟?;
+            break;
+          case 'Activity':
+          case '袗泻褌懈胁薪芯褋褌褜':
+            strongTag.textContent = '娲诲姩锟?;
+            break;
+          case 'Reproduction':
+          case '袪邪蟹屑薪芯卸械薪懈�?:
+            strongTag.textContent = '绻佹畺锟?;
+            break;
+          case 'Lifespan':
+          case '袩褉芯写芯谢卸懈褌械谢褜薪芯褋褌�?卸懈蟹薪�?:
+            strongTag.textContent = '瀵垮懡锟?;
+            break;
+          case 'Territorial Behavior':
+          case '孝械褉褉懈褌芯褉懈邪谢褜薪芯�?锌芯胁械写械薪懈�?:
+            strongTag.textContent = '棰嗗湴琛屼负�?;
+            break;
+          case 'Communication Methods':
+          case '小锌芯褋芯斜�?泻芯屑屑褍薪懈泻邪褑懈懈':
+            strongTag.textContent = '浜ゆ祦鏂瑰紡�?;
+            break;
+          case 'Activity Patterns':
+          case '袪械卸懈�?邪泻褌懈胁薪芯褋褌懈':
+            strongTag.textContent = '娲诲姩瑙勫緥�?;
+            break;
+          case 'Temperature Regulation':
+          case '袪械谐褍谢褟褑懈�?褌械屑锌械褉邪褌褍褉�?:
+            strongTag.textContent = '浣撴俯璋冭妭�?;
+            break;
+        }
+      }
+    });
+  }
+}
+
+// 鍒涘缓鍒锋柊瀹炴椂鏁版嵁鐨勫嚱锟?async function refreshLiveData() {
+  try {
+    // 鑾峰彇API瀹炰�?
+    const api = getAPI();
+    if (!api) {
+      throw new Error('API鏈嶅姟涓嶅彲�?);
+    }
+    
+    // 鑾峰彇鏈€鏂扮洿鎾暟锟?    const liveData = await api.getPandaLiveInfo();
+    
+    // 鏇存柊鐜鏁版�?
+    if (liveData.monitoringData && liveData.monitoringData.environmentalData) {
+      updateEnvironmentData(liveData.monitoringData.environmentalData);
+    }
+    
+    // 鏇存柊鐔婄尗鐘舵€佹暟锟?    if (liveData.monitoringData && liveData.monitoringData.pandaStatus) {
+      updatePandaStatusData(liveData.monitoringData.pandaStatus);
+    }
+    
+    // 鏇存柊缁熻鏁版�?
+    if (liveData.monitoringData && liveData.monitoringData.statisticsData) {
+      updateStatisticsData(liveData.monitoringData.statisticsData);
+    }
+    
+    // 鏇存柊鐩存挱婧愮姸锟?    if (liveData.liveSources) {
+      updateLiveSourcesStatus(liveData.liveSources);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('鍒锋柊鐩存挱鏁版嵁澶辫触:', error);
+    return false;
+  }
+}
+
+// 鏇存柊鐜鏁版�?
+function updateEnvironmentData(environmentalData) {
+  environmentalData.forEach(env => {
+    const envCard = document.querySelector(`.environment-card[data-location="${env.location}"]`);
+    if (envCard) {
+      // 鏇存柊娓╁害
+      const tempElement = envCard.querySelector('.env-value[data-type="temperature"]');
+      if (tempElement) {
+        tempElement.textContent = `${env.temperature}掳C`;
+      }
+      
+      // 鏇存柊婀垮害
+      const humidityElement = envCard.querySelector('.env-value[data-type="humidity"]');
+      if (humidityElement) {
+        humidityElement.textContent = `${env.humidity}%`;
+      }
+      
+      // 鏇存柊姘斿帇
+      const pressureElement = envCard.querySelector('.env-value[data-type="pressure"]');
+      if (pressureElement) {
+        pressureElement.textContent = `${env.pressure} hPa`;
+      }
+      
+      // 鏇存柊绌烘皵璐ㄩ�?
+      const airQualityElement = envCard.querySelector('.env-value[data-type="airQuality"]');
+      if (airQualityElement) {
+        airQualityElement.textContent = env.airQuality;
+      }
+      
+      // 鏇存柊鏃堕棿�?      const updateElement = envCard.querySelector('.env-update');
+      if (updateElement) {
+        updateElement.textContent = '涓婃鏇存柊: 鍒氬�?;
+      }
+    }
+  });
+}
+
+// 鏇存柊鐔婄尗鐘舵€佹暟锟?function updatePandaStatusData(pandaStatus) {
+  pandaStatus.forEach(panda => {
+    const pandaCard = document.querySelector(`.panda-card[data-name="${panda.name}"]`);
+    if (pandaCard) {
+      // 鏇存柊浣嶇疆
+      const locationElement = pandaCard.querySelector('.panda-value[data-type="location"]');
+      if (locationElement) {
+        locationElement.textContent = panda.location;
+      }
+      
+      // 鏇存柊鍋ュ悍鐘跺�?
+      const healthElement = pandaCard.querySelector('.panda-value[data-type="health"]');
+      if (healthElement) {
+        healthElement.textContent = panda.health;
+      }
+      
+      // 鏇存柊褰撳墠娲诲�?
+      const activityElement = pandaCard.querySelector('.panda-value[data-type="activity"]');
+      if (activityElement) {
+        activityElement.textContent = panda.activity;
+      }
+      
+      // 鏇存柊鏃堕棿�?      const updateElement = pandaCard.querySelector('.panda-update');
+      if (updateElement) {
+        updateElement.textContent = '涓婃鏇存柊: 鍒氬�?;
+      }
+    }
+  });
+}
+
+// 鏇存柊缁熻鏁版�?
+function updateStatisticsData(statisticsData) {
+  // 鏇存柊褰撳墠瑙傜湅浜烘暟
+  const viewersElement = document.querySelector('.stat-value[data-type="viewers"]');
+  if (viewersElement) {
+    viewersElement.textContent = statisticsData.totalViewers;
+  }
+  
+  // 鏇存柊鍦ㄧ嚎鐩戞帶鏁伴噺
+  const streamsElement = document.querySelector('.stat-value[data-type="streams"]');
+  if (streamsElement) {
+    streamsElement.textContent = statisticsData.activeStreams;
+  }
+  
+  // 鏇存柊楂樺嘲瑙傜湅鏃舵
+  const peakElement = document.querySelector('.stat-value[data-type="peak"]');
+  if (peakElement) {
+    peakElement.textContent = statisticsData.peakViewingTime;
+  }
+  
+  // 鏇存柊鏈€鍙楁杩庣洃锟?  const popularElement = document.querySelector('.stat-value[data-type="popular"]');
+  if (popularElement) {
+    popularElement.textContent = statisticsData.popularStream;
+  }
+}
+
+// 鏇存柊鐩存挱婧愮姸锟?function updateLiveSourcesStatus(liveSources) {
+  liveSources.forEach((live, index) => {
+    const liveItem = document.querySelector(`.live-item[data-index="${index}"]`);
+    if (liveItem) {
+      // 鏇存柊鐘舵€佹爣�?      const statusElement = liveItem.querySelector('.stream-status');
+      if (statusElement) {
+        statusElement.textContent = live.status;
+        
+        // 鏇存柊鐘舵€佺被�?        statusElement.className = 'stream-status';
+        if (live.status === '鍦ㄧ�?) {
+          statusElement.classList.add('status-online');
+        } else {
+          statusElement.classList.add('status-offline');
+        }
+      }
+      
+      // 鏇存柊鎾斁鎸夐�?
+      const playButton = liveItem.querySelector('.play-button');
+      if (playButton) {
+        playButton.className = 'play-button';
+        if (live.status === '鍦ㄧ�?) {
+          playButton.classList.add('status-online');
+          playButton.textContent = '�?鎾斁鐩存挱';
+          playButton.disabled = false;
+        } else {
+          playButton.classList.add('status-offline');
+          playButton.textContent = '�?' + live.status;
+          playButton.disabled = true;
+        }
+      }
+    }
+  });
+}
+
+async function loadPandaLive() {
+  const contentContainer = document.getElementById('content-container');
+  
+  // 鏄剧ず鍔犺浇鐘讹�?  contentContainer.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p>姝ｅ湪鍔犺浇鐔婄尗鐩存挱...</p></div>';
+  
+  try {
+    // 鑾峰彇API瀹炰�?
+    const api = getAPI();
+    if (!api) {
+      throw new Error('API鏈嶅姟涓嶅彲�?);
+    }
+    
+    // 鑾峰彇鐩存挱鏁版�?
+    const liveData = await api.getPandaLiveInfo();
+    
+    // 鏋勫缓鐩存挱HTML
+    let liveHtml = `
+      <div class="page-container live-page">
+        <h2>鐔婄尗瀹炴椂鐩戞帶涓�?/h2>
+        
+        <!-- 鐩戞帶鏁版嵁姒傝�?-->
+        <div class="monitoring-overview">
+          <div class="overview-card">
+            <h3>鐩戞帶姒傚喌</h3>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <span class="stat-label">褰撳墠瑙傜湅浜烘�?/span>
+                <span class="stat-value" data-type="viewers">${liveData.monitoringData.statisticsData.totalViewers}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">鍦ㄧ嚎鐩戞帶</span>
+                <span class="stat-value" data-type="streams">${liveData.monitoringData.statisticsData.activeStreams}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">楂樺嘲瑙傜湅鏃舵�?/span>
+                <span class="stat-value" data-type="peak">${liveData.monitoringData.statisticsData.peakViewingTime}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">鏈€鍙楁杩庣洃�?/span>
+                <span class="stat-value" data-type="popular">${liveData.monitoringData.statisticsData.popularStream}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 鐩戞帶鏍囩�?-->
+        <div class="monitor-tabs">
+          <div class="tab-header">
+            <button class="tab-btn active" data-tab="live-streams">瀹炴椂鐩存挱</button>
+            <button class="tab-btn" data-tab="environment">鐜鐩戞祴</button>
+            <button class="tab-btn" data-tab="pandas">鐔婄尗鐘讹拷?/button>
+            <button class="tab-btn" data-tab="history">鍘嗗彶鍥炴斁</button>
+          </div>
+          
+          <div class="tab-content">
+            <!-- 瀹炴椂鐩存挱鏍囩鍐呭 -->
+            <div class="tab-pane active" id="live-streams">
+              <!-- 鍥藉唴鐩戞帶鍒嗙�?-->
+              <div class="live-group">
+                <h3 class="live-group-title">鍥藉唴鐔婄尗鐩戞�?/h3>
+                <div class="live-container">
+    `;
+    
+    // 娣诲姞鍥藉唴鐩存挱锟?    const domesticSources = liveData.liveSources.slice(0, 6); // �?涓槸鍥藉唴鐩戞�?
+    domesticSources.forEach((live, index) => {
+      // 鏍规嵁鐩存挱绫诲瀷娣诲姞涓嶅悓鐨勬爣�?      let typeIcon = '';
+      if (live.type === 'infrared') {
+        typeIcon = '<span class="stream-type infrared">绾㈠�?/span>';
+      } else if (live.type === 'video') {
+        typeIcon = '<span class="stream-type video">瑙嗛�?/span>';
+      }
+      
+      // 鏍规嵁鐘舵€佹坊鍔犱笉鍚岀殑鏍峰紡
+      let statusClass = 'status-online';
+      if (live.status !== '鍦ㄧ�?) {
+        statusClass = 'status-offline';
+      }
+      
+      liveHtml += `
+        <div class="live-item" data-index="${index}">
+          <h3>${live.name} ${typeIcon}</h3>
+          <div class="live-player">
+            <img src="${live.image}" alt="鐔婄尗鐩存挱" class="live-placeholder">
+            <div class="live-controls">
+              <button class="play-button ${statusClass}" data-url="${live.url}" ${live.status !== '鍦ㄧ�? ? 'disabled' : ''}>
+                ${live.status === '鍦ㄧ�? ? '�?鎾斁鐩存挱' : '�?' + live.status}
+              </button>
+            </div>
+            <span class="stream-status ${statusClass}">${live.status}</span>
+          </div>
+          <p class="live-description">${live.description}</p>
+        </div>
+      `;
+    });
+    
+    // 鍏抽棴鍥藉唴鐩戞帶鍒嗙粍锛屾坊鍔犲浗澶栫洃鎺у垎锟?    liveHtml += `
+                </div>
+              </div>
+              
+              <!-- 鍥藉鐩戞帶鍒嗙�?-->
+              <div class="live-group">
+                <h3 class="live-group-title">鍥藉鐔婄尗鐩戞�?/h3>
+                <div class="live-container">
+    `;
+    
+    // 娣诲姞鍥藉鐩存挱锟?    const internationalSources = liveData.liveSources.slice(6); // �?涓箣鍚庢槸鍥藉鐩戞帶
+    internationalSources.forEach((live, index) => {
+      // 瀹為檯绱㈠紩
+      const actualIndex = index + 6;
+      
+      // 鏍规嵁鐩存挱绫诲瀷娣诲姞涓嶅悓鐨勬爣�?      let typeIcon = '';
+      if (live.type === 'infrared') {
+        typeIcon = '<span class="stream-type infrared">绾㈠�?/span>';
+      } else if (live.type === 'video') {
+        typeIcon = '<span class="stream-type video">瑙嗛�?/span>';
+      }
+      
+      // 娣诲姞鍥藉/鍦板尯鏍囪
+      let countryFlag = '';
+      if (live.name.includes('缇庡�?)) {
+        countryFlag = '<span class="country-flag">馃嚭馃嚫</span>';
+      } else if (live.name.includes('鏃ユ�?)) {
+        countryFlag = '<span class="country-flag">馃嚡馃嚨</span>';
+      } else if (live.name.includes('娉曞�?)) {
+        countryFlag = '<span class="country-flag">馃嚝馃嚪</span>';
+      } else if (live.name.includes('鍔犳嬁锟?)) {
+        countryFlag = '<span class="country-flag">馃嚚馃嚘</span>';
+      } else if (live.name.includes('婢冲ぇ鍒╀�?)) {
+        countryFlag = '<span class="country-flag">馃嚘馃嚭</span>';
+      } else if (live.name.includes('濂ュ湴锟?)) {
+        countryFlag = '<span class="country-flag">馃嚘馃嚬</span>';
+      } else if (live.name.includes('椹潵瑗夸簹')) {
+        countryFlag = '<span class="country-flag">馃嚥馃嚲</span>';
+      } else if (live.name.includes('姣斿埄锟?)) {
+        countryFlag = '<span class="country-flag">馃嚙馃嚜</span>';
+      } else if (live.name.includes('鑽峰�?)) {
+        countryFlag = '<span class="country-flag">馃嚦馃嚤</span>';
+      } else if (live.name.includes('闊╁�?)) {
+        countryFlag = '<span class="country-flag">馃嚢馃嚪</span>';
+      } else if (live.name.includes('鑺�?)) {
+        countryFlag = '<span class="country-flag">馃嚝馃嚠</span>';
+      }
+      
+      // 鏍规嵁鐘舵€佹坊鍔犱笉鍚岀殑鏍峰紡
+      let statusClass = 'status-online';
+      if (live.status !== '鍦ㄧ�?) {
+        statusClass = 'status-offline';
+      }
+      
+      liveHtml += `
+        <div class="live-item" data-index="${actualIndex}">
+          <h3>${countryFlag} ${live.name} ${typeIcon}</h3>
+          <div class="live-player">
+            <img src="${live.image}" alt="鐔婄尗鐩存挱" class="live-placeholder">
+            <div class="live-controls">
+              <button class="play-button ${statusClass}" data-url="${live.url}" ${live.status !== '鍦ㄧ�? ? 'disabled' : ''}>
+                ${live.status === '鍦ㄧ�? ? '�?鎾斁鐩存挱' : '�?' + live.status}
+              </button>
+            </div>
+            <span class="stream-status ${statusClass}">${live.status}</span>
+          </div>
+          <p class="live-description">${live.description}</p>
+        </div>
+      `;
+    });
+    
+    // 鍏抽棴鍥藉鐩戞帶鍒嗙粍鍜屽疄鏃剁洿鎾爣锟?    liveHtml += `
+                </div>
+              </div>
+            </div>
+            
+            <!-- 鐜鐩戞祴鏍囩鍐呭 -->
+            <div class="tab-pane" id="environment">
+              <div class="environment-container">
+                <h3>瀹炴椂鐜鏁版�?/h3>
+                <div class="environment-grid">
+    `;
+    
+    // 娣诲姞鐜鏁版�?
+    liveData.monitoringData.environmentalData.forEach(env => {
+      // 娣诲姞鍥藉/鍦板尯鏍囪
+      let countryFlag = '';
+      if (env.country === '缇庡�?) {
+        countryFlag = '<span class="country-flag">馃嚭馃嚫</span>';
+      } else if (env.country === '鏃ユ�?) {
+        countryFlag = '<span class="country-flag">馃嚡馃嚨</span>';
+      } else if (env.country === '娉曞�?) {
+        countryFlag = '<span class="country-flag">馃嚝馃嚪</span>';
+      } else if (env.country === '鍔犳嬁锟?) {
+        countryFlag = '<span class="country-flag">馃嚚馃嚘</span>';
+      } else if (env.country === '婢冲ぇ鍒╀�?) {
+        countryFlag = '<span class="country-flag">馃嚘馃嚭</span>';
+      } else if (env.country === '濂ュ湴锟?) {
+        countryFlag = '<span class="country-flag">馃嚘馃嚬</span>';
+      } else if (env.country === '椹潵瑗夸簹') {
+        countryFlag = '<span class="country-flag">馃嚥馃嚲</span>';
+      } else if (env.country === '姣斿埄锟?) {
+        countryFlag = '<span class="country-flag">馃嚙馃嚜</span>';
+      } else if (env.country === '鑽峰�?) {
+        countryFlag = '<span class="country-flag">馃嚦馃嚤</span>';
+      } else if (env.country === '闊╁�?) {
+        countryFlag = '<span class="country-flag">馃嚢馃嚪</span>';
+      } else if (env.country === '鑺�?) {
+        countryFlag = '<span class="country-flag">馃嚝馃嚠</span>';
+      }
+      
+      liveHtml += `
+        <div class="environment-card" data-location="${env.location}">
+          <h4>${countryFlag} ${env.location}</h4>
+          <div class="env-data">
+            <div class="env-item">
+              <span class="env-icon">馃尅�?/span>
+              <span class="env-label">娓╁�?/span>
+              <span class="env-value" data-type="temperature">${env.temperature}掳C</span>
+            </div>
+            <div class="env-item">
+              <span class="env-icon">馃挧</span>
+              <span class="env-label">婀垮害</span>
+              <span class="env-value" data-type="humidity">${env.humidity}%</span>
+            </div>
+            <div class="env-item">
+              <span class="env-icon">馃尙�?/span>
+              <span class="env-label">姘斿�?/span>
+              <span class="env-value" data-type="pressure">${env.pressure} hPa</span>
+            </div>
+            <div class="env-item">
+              <span class="env-icon">馃崈</span>
+              <span class="env-label">绌烘皵璐ㄩ噺</span>
+              <span class="env-value" data-type="airQuality">${env.airQuality}</span>
+            </div>
+          </div>
+          <div class="env-update">涓婃鏇存柊: ${env.lastUpdate}</div>
+        </div>
+      `;
+    });
+    
+    // 鍏抽棴鐜鐩戞祴鏍囩骞舵坊鍔犵唺鐚姸鎬佹爣�?    liveHtml += `
+                </div>
+              </div>
+            </div>
+            
+            <!-- 鐔婄尗鐘舵€佹爣绛惧唴锟?-->
+            <div class="tab-pane" id="pandas">
+              <div class="pandas-container">
+                <h3>鐔婄尗瀹炴椂鐘讹拷?/h3>
+                <div class="pandas-grid">
+    `;
+    
+    // 娣诲姞鐔婄尗鐘舵€佹暟锟?    liveData.monitoringData.pandaStatus.forEach(panda => {
+      // 娣诲姞鍥藉/鍦板尯鏍囪
+      let countryFlag = '';
+      if (panda.country === '涓�?) {
+        countryFlag = '<span class="country-flag">馃嚚馃嚦</span>';
+      } else if (panda.country === '缇庡�?) {
+        countryFlag = '<span class="country-flag">馃嚭馃嚫</span>';
+      } else if (panda.country === '鏃ユ�?) {
+        countryFlag = '<span class="country-flag">馃嚡馃嚨</span>';
+      } else if (panda.country === '娉曞�?) {
+        countryFlag = '<span class="country-flag">馃嚝馃嚪</span>';
+      } else if (panda.country === '鍔犳嬁锟?) {
+        countryFlag = '<span class="country-flag">馃嚚馃嚘</span>';
+      } else if (panda.country === '婢冲ぇ鍒╀�?) {
+        countryFlag = '<span class="country-flag">馃嚘馃嚭</span>';
+      } else if (panda.country === '濂ュ湴锟?) {
+        countryFlag = '<span class="country-flag">馃嚘馃嚬</span>';
+      } else if (panda.country === '椹潵瑗夸簹') {
+        countryFlag = '<span class="country-flag">馃嚥馃嚲</span>';
+      } else if (panda.country === '姣斿埄锟?) {
+        countryFlag = '<span class="country-flag">馃嚙馃嚜</span>';
+      } else if (panda.country === '鑽峰�?) {
+        countryFlag = '<span class="country-flag">馃嚦馃嚤</span>';
+      } else if (panda.country === '闊╁�?) {
+        countryFlag = '<span class="country-flag">馃嚢馃嚪</span>';
+      } else if (panda.country === '鑺�?) {
+        countryFlag = '<span class="country-flag">馃嚝馃嚠</span>';
+      }
+      
+      liveHtml += `
+        <div class="panda-card" data-name="${panda.name}">
+          <div class="panda-header">
+            <h4>${countryFlag} ${panda.name}</h4>
+            <span class="panda-age">${panda.age}</span>
+          </div>
+          <div class="panda-data">
+            <div class="panda-item">
+              <span class="panda-label">浣嶇�?/span>
+              <span class="panda-value" data-type="location">${panda.location}</span>
+            </div>
+            <div class="panda-item">
+              <span class="panda-label">鍋ュ悍鐘跺喌</span>
+              <span class="panda-value" data-type="health">${panda.health}</span>
+            </div>
+            <div class="panda-item">
+              <span class="panda-label">褰撳墠娲诲姩</span>
+              <span class="panda-value" data-type="activity">${panda.activity}</span>
+            </div>
+          </div>
+          <div class="panda-update">涓婃鏇存柊: ${panda.lastUpdate}</div>
+        </div>
+      `;
+    });
+    
+    // 鍏抽棴鐔婄尗鐘舵€佹爣绛惧苟娣诲姞鍘嗗彶鍥炴斁鏍囩
+    liveHtml += `
+                </div>
+              </div>
+            </div>
+            
+            <!-- 鍘嗗彶鍥炴斁鏍囩鍐呭 -->
+            <div class="tab-pane" id="history">
+              <div class="history-container">
+                <h3>鍘嗗彶绮惧僵鍥炴�?/h3>
+                <div class="history-grid">
+    `;
+    
+    // 娣诲姞鍘嗗彶鍥炴斁鏁版嵁
+    liveData.historyRecords.forEach(record => {
+      liveHtml += `
+        <div class="history-card">
+          <div class="history-thumbnail">
+            <img src="${record.thumbnail}" alt="${record.title}">
+            <span class="history-duration">${record.duration}</span>
+          </div>
+          <div class="history-info">
+            <h4>${record.title}</h4>
+            <p class="history-date">${record.date}</p>
+            <button class="history-play-btn" data-url="${record.url}">瑙傜湅鍥炴斁</button>
+          </div>
+        </div>
+      `;
+    });
+    
+    // 鍏抽棴鍘嗗彶鍥炴斁鏍囩鍜屾爣绛惧唴�?    liveHtml += `
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 娲诲姩鏃堕棿�?-->
+        <div class="live-schedule">
+          <h3>鐔婄尗娲诲姩鏃堕棿锟?/h3>
+          <table>
+            <thead>
+              <tr>
+                <th>鏃堕�?/th>
+                <th>娲诲�?/th>
+                <th>鍦扮�?/th>
+                <th>鍙備笌鐔婄尗</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    // 娣诲姞娲诲姩鏃堕棿琛ㄦ暟�?    liveData.scheduleData.forEach(schedule => {
+      liveHtml += `
+        <tr>
+          <td>${schedule.time}</td>
+          <td>${schedule.activity}</td>
+          <td>${schedule.location}</td>
+          <td>${schedule.pandas}</td>
+        </tr>
+      `;
+    });
+    
+    // 鍏抽棴鏃堕棿琛ㄥ拰椤甸潰瀹瑰�?
+    liveHtml += `
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    
+    // 鏇存柊鍐呭
+    contentContainer.innerHTML = liveHtml;
+    
+    // 鍒濆鍖栬嚜鍔ㄥ埛鏂板姛�?    if (typeof autoRefresh !== 'undefined' && autoRefresh.initAutoRefresh) {
+      const livePageContainer = document.querySelector('.live-page');
+      if (livePageContainer) {
+        autoRefresh.initAutoRefresh(livePageContainer, refreshLiveData, 60000); // �?0绉掑埛鏂颁竴�?      }
+    }
+    
+    // 娣诲姞鏍囩椤靛垏鎹㈠姛�?    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        // 绉婚櫎鎵€鏈夋爣绛炬寜閽殑娲诲姩鐘讹拷?        tabButtons.forEach(btn => btn.classList.remove('active'));
+        // 娣诲姞褰撳墠鏍囩鎸夐挳鐨勬椿鍔ㄧ姸�?        this.classList.add('active');
+        
+        // 鑾峰彇鐩爣鏍囩椤礗D
+        const targetTabId = this.getAttribute('data-tab');
+        
+        // 闅愯棌鎵€鏈夋爣绛鹃〉鍐呭
+        const tabPanes = document.querySelectorAll('.tab-pane');
+        tabPanes.forEach(pane => pane.classList.remove('active'));
+        
+        // 鏄剧ず鐩爣鏍囩椤靛唴�?        document.getElementById(targetTabId).classList.add('active');
+      });
+    });
+    
+    // 娣诲姞鐩存挱鎸夐挳鐐瑰嚮浜嬩�?
+    const playButtons = document.querySelectorAll('.play-button:not([disabled])');
+    playButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const livePlayer = this.closest('.live-player');
+        const placeholder = livePlayer.querySelector('.live-placeholder');
+        const url = this.getAttribute('data-url');
+        
+        // 杩欓噷搴旇鏄疄闄呯殑瑙嗛鎾斁閫昏�?
+        this.textContent = "姝ｅ湪鐩存挱�?..";
+        this.disabled = true;
+        placeholder.style.opacity = "0.7";
+        
+        // 娣诲姞涓€涓彁绀轰俊�?        const liveStatus = document.createElement('div');
+        liveStatus.className = 'live-status';
+        liveStatus.textContent = '鐩存挱杩炴帴涓紝璇风◢�?..';
+        livePlayer.appendChild(liveStatus);
+        
+        // 灏濊瘯鎵撳紑鐩存挱閾炬帴
+        window.open(url, '_blank');
+      });
+    });
+    
+    // 娣诲姞鍘嗗彶鍥炴斁鎸夐挳鐐瑰嚮浜嬩欢
+    const historyPlayButtons = document.querySelectorAll('.history-play-btn');
+    historyPlayButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const url = this.getAttribute('data-url');
+        if (url && url !== '#') {
+          window.open(url, '_blank');
+        } else {
+          alert('璇ュ巻鍙茶棰戞殏涓嶅彲�?);
+        }
+      });
+    });
+    
+    // 绉婚櫎鏃х殑鐜鏁版嵁鑷姩鍒锋柊鍔熻兘锛屽洜涓哄凡缁忕敱autoRefresh妯″潡澶勭�?
+    
+  } catch (error) {
+    console.error('鍔犺浇鐔婄尗鐩存挱澶辫触:', error);
+    contentContainer.innerHTML = '<div class="error-container"><p>鍔犺浇鐔婄尗鐩存挱澶辫触锛岃绋嶅悗鍐嶈瘯锟?/p></div>';
+  }
+} 
+
+// 鍔犺浇鐔婄尗鍦板浘椤甸潰
+async function loadPandaMap() {
+  const contentContainer = document.getElementById('content-container');
+  
+  // 鏄剧ず鍔犺浇鐘讹�?  contentContainer.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p>姝ｅ湪鍔犺浇鐔婄尗鍦板浘...</p></div>';
+  
+  try {
+    // 鑾峰彇API瀹炰�?
+    const api = getAPI();
+    if (!api) {
+      throw new Error('API鏈嶅姟涓嶅彲�?);
+    }
+    
+    // 鑾峰彇鐔婄尗浣嶇疆鏁版嵁
+    let pandaLocations = [];
+    
+    // 灏濊瘯浠嶢PI鑾峰彇浣嶇疆鏁版�?
+    try {
+      if (api.getPandaLocations) {
+        pandaLocations = await api.getPandaLocations();
+      } else {
+        // 濡傛灉API涓嶆敮鎸侊紝浣跨敤榛樿鏁版�?
+        pandaLocations = getDefaultPandaLocations();
+      }
+    } catch (error) {
+      console.warn('鑾峰彇鐔婄尗浣嶇疆鏁版嵁澶辫触锛屼娇鐢ㄩ粯璁ゆ暟�?, error);
+      pandaLocations = getDefaultPandaLocations();
+    }
+    
+    // 璁＄畻缁熻鏁版�?
+    const totalPandas = pandaLocations.reduce((sum, loc) => sum + loc.count, 0);
+    const wildPandas = pandaLocations
+      .filter(loc => loc.type === 'wild')
+      .reduce((sum, loc) => sum + loc.count, 0);
+    const captivePandas = pandaLocations
+      .filter(loc => loc.type === 'captive')
+      .reduce((sum, loc) => sum + loc.count, 0);
+    const researchPandas = pandaLocations
+      .filter(loc => loc.type === 'research')
+      .reduce((sum, loc) => sum + loc.count, 0);
+    const countries = [...new Set(pandaLocations.map(loc => loc.country))].length;
+    
+    // 鏋勫缓鍦板浘HTML
+    let mapHtml = `
+      <div class="page-container map-page">
+        <h2>鍏ㄧ悆鐔婄尗鍒嗗竷鍦板浘</h2>
+        <div class="map-controls">
+          <div class="map-filter">
+            <label>绛涢€夋樉绀猴細</label>
+            <select id="map-filter-select">
+              <option value="all">鎵€鏈夌唺锟?/option>
+              <option value="china">涓浗澶ч�?/option>
+              <option value="international">鍥介檯鏈烘�?/option>
+              <option value="wild">閲庣敓绉嶇兢</option>
+              <option value="captive">鍦堝吇鐔婄尗</option>
+              <option value="research">鐮旂┒涓績</option>
+            </select>
+            <button id="display-mode-btn" class="display-mode-btn">鍒囨崲瑙嗗浘妯″紡</button>
+          </div>
+          <div class="map-legend">
+            <span class="legend-item"><span class="legend-dot wild"></span> 閲庣敓绉嶇兢</span>
+            <span class="legend-item"><span class="legend-dot captive"></span> 鍦堝吇鐔婄尗</span>
+            <span class="legend-item"><span class="legend-dot research"></span> 鐮旂┒涓績</span>
+            <span class="legend-item"><span class="legend-dot multiple"></span> 澶氬姛鑳藉満鎵€</span>
+          </div>
+          <div class="map-filter-notice" style="display:none;"></div>
+        </div>
+        <div id="panda-map-container" class="panda-map-container"></div>
+        <div class="map-info-panel">
+          <h3>鐔婄尗鍒嗗竷淇℃�?/h3>
+          <div id="map-info-content">
+            <p>鐐瑰嚮鍦板浘涓婄殑鏍囪鏌ョ湅璇︾粏淇℃�?/p>
+            <div class="map-stats">
+              <div class="map-stat-item">
+                <span class="map-stat-label">鍏ㄧ悆鐔婄尗鎬绘�?/span>
+                <span class="map-stat-value">${totalPandas}�?/span>
+              </div>
+              <div class="map-stat-item">
+                <span class="map-stat-label">閲庣敓鐔婄尗鏁伴�?/span>
+                <span class="map-stat-value">${wildPandas}�?/span>
+              </div>
+              <div class="map-stat-item">
+                <span class="map-stat-label">鍦堝吇鐔婄尗鏁伴�?/span>
+                <span class="map-stat-value">${captivePandas}�?/span>
+              </div>
+              <div class="map-stat-item">
+                <span class="map-stat-label">鐮旂┒涓績鐔婄�?/span>
+                <span class="map-stat-value">${researchPandas}�?/span>
+              </div>
+              <div class="map-stat-item">
+                <span class="map-stat-label">鍒嗗竷鍥藉/鍦板�?/span>
+                <span class="map-stat-value">${countries}�?/span>
+              </div>
+              <div class="map-stat-item">
+                <span class="map-stat-label">鍒嗗竷鐐逛綅鏁伴�?/span>
+                <span class="map-stat-value">${pandaLocations.length}�?/span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // 鏇存柊鍐呭
+    contentContainer.innerHTML = mapHtml;
+    
+    // 鍒濆鍖栧湴�?    initPandaMap(pandaLocations);
+    
+    // 娣诲姞绛涢€変簨�?    const filterSelect = document.getElementById('map-filter-select');
+    if (filterSelect) {
+      filterSelect.addEventListener('change', function() {
+        filterPandaLocations(this.value, pandaLocations);
+      });
+    }
+    
+  } catch (error) {
+    console.error('鍔犺浇鐔婄尗鍦板浘澶辫触:', error);
+    contentContainer.innerHTML = `
+      <div class="error-container">
+        <p>鍔犺浇鐔婄尗鍦板浘澶辫触锛岃绋嶅悗鍐嶈瘯锟?/p>
+        <p class="error-details">${error.message}</p>
+        <button id="retry-map" class="retry-button">閲嶈�?/button>
+      </div>
+    `;
+    
+    // 娣诲姞閲嶈瘯鎸夐挳鐐瑰嚮浜嬩�?
+    const retryButton = document.getElementById('retry-map');
+    if (retryButton) {
+      retryButton.addEventListener('click', () => {
+        loadPandaMap();
+      });
+    }
+  }
+}
+
+// 鍒濆鍖栫唺鐚湴锟?function initPandaMap(locations) {
+  // 妫€鏌ュ湴鍥惧�?  const mapContainer = document.getElementById('panda-map-container');
+  if (!mapContainer) {
+    console.error('鍦板浘瀹瑰櫒涓嶅瓨�?);
+    return;
+  }
+  
+  try {
+    // 鍒涘缓瀹瑰櫒甯冨眬锛屽悓鏃跺寘鍚〃鏍煎拰鍦板�?
+    let html = `
+      <div style="display: flex; flex-direction: column; height: 100%;">
+        <!-- 鍙嫋鎷藉湴鍥惧锟?-->
+        <div id="draggable-map-container" class="draggable-map-container">
+          <div class="map-instruction">
+            <i class="fa fa-info-circle"></i> 榧犳爣鎷栨嫿鍙Щ鍔ㄥ湴鍥撅紝婊氳疆鍙缉鏀惧湴�?          </div>
+          <div id="map-base" class="map-base" style="background-color: #e8f5f7;">
+            <!-- 鑳屾櫙鍦板浘灏嗗湪杩欓噷缁樺�?-->
+          </div>
+          <div id="map-markers" class="map-markers">
+            <!-- 鏍囪灏嗗湪杩欓噷娣诲姞 -->
+          </div>
+          <div class="map-legend-container">
+            <span class="legend-item"><span class="legend-dot wild"></span> 閲庣敓绉嶇兢</span>
+            <span class="legend-item"><span class="legend-dot captive"></span> 鍦堝吇鐔婄尗</span>
+            <span class="legend-item"><span class="legend-dot research"></span> 鐮旂┒涓績</span>
+          </div>
+        </div>
+        
+        <!-- 浣嶇疆鍒楄�?-->
+        <div class="locations-table-container">
+          <h3 style="margin-top: 10px; margin-left: 10px;">鍏ㄧ悆鐔婄尗鍒嗗竷鍒楄�?/h3>
+          <div style="margin-bottom: 20px; margin-left: 10px;">
+            <div class="map-legend" style="display: flex; gap: 15px; margin-bottom: 15px;">
+              <span class="legend-item"><span class="legend-dot wild" style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:#4CAF50;"></span> 閲庣敓绉嶇兢</span>
+              <span class="legend-item"><span class="legend-dot captive" style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:#2196F3;"></span> 鍦堝吇鐔婄尗</span>
+              <span class="legend-item"><span class="legend-dot research" style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:#9C27B0;"></span> 鐮旂┒涓績</span>
+            </div>
+          </div>
+          
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
+            <thead>
+              <tr style="background-color: #f1f1f1;">
+              <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">鍚嶇О</th>
+              <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">鍥藉�?鍦板�?/th>
+              <th style="padding: 10px; text-align: center; border: 1px solid #ddd;">绫诲�?/th>
+              <th style="padding: 10px; text-align: center; border: 1px solid #ddd;">鐔婄尗鏁伴噺</th>
+              <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">鍦板�?/th>
+              <th style="padding: 10px; text-align: center; border: 1px solid #ddd;">鎿嶄�?/th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    // 娣诲姞鐔婄尗浣嶇疆锟?    locations.forEach(loc => {
+      // 纭畾绫诲瀷棰滆壊鍜屾爣锟?      let typeColor, typeLabel;
+      if (loc.types && loc.types.length > 1) {
+        typeColor = "#9467bd"; // 澶氬姛鑳藉満鎵€
+        typeLabel = "澶氬姛鑳藉満鎵€";
+      } else if (loc.type === 'wild') {
+        typeColor = "#4CAF50"; // 閲庣�?
+        typeLabel = "閲庣敓绉嶇兢";
+      } else if (loc.type === 'captive') {
+        typeColor = "#2196F3"; // 鍦堝�?
+        typeLabel = "鍦堝吇鐔婄尗";
+      } else {
+        typeColor = "#9C27B0"; // 鐮旂┒涓績
+        typeLabel = "鐮旂┒涓績";
+      }
+              
+      html += `
+                <tr class="location-row" data-id="${loc.id}" style="border-bottom: 1px solid #ddd; cursor: pointer;" 
+                    onclick="selectLocation(${loc.id})">
+          <td style="padding: 10px; border: 1px solid #ddd;"><strong>${loc.name}</strong></td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${loc.country}</td>
+          <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">
+                    <span style="display: inline-block; padding: 2px 8px; border-radius: 10px; background-color: ${typeColor}; color: white; font-size: 12px;">
+                      ${typeLabel}
+                    </span>
+                  </td>
+          <td style="padding: 10px; text-align: center; border: 1px solid #ddd;"><strong>${loc.count}</strong> �?/td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${loc.address}</td>
+          <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">
+                    <button class="view-detail-btn" onclick="event.stopPropagation(); selectLocation(${loc.id});"
+                      style="background-color: #4ecdc4; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+              鏌ョ湅璇︽儏
+                    </button>
+                  </td>
+                </tr>
+              `;
+    });
+    
+    // 鍏抽棴琛ㄦ牸
+    html += `
+            </tbody>
+          </table>
+      </div>
+      </div>
+    `;
+    
+    // 灏咹TML娣诲姞鍒板�?    mapContainer.innerHTML = html;
+    
+    // 鍒濆鍖栧彲鎷栨嫿鍦板浘
+    initDraggableMap();
+    
+    // 鍦ㄥ湴鍥句笂娣诲姞鏍囪
+    addMarkersToMap(locations);
+    
+    // 娣诲姞鍏ㄥ眬閫夋嫨鍑芥暟
+    window.selectLocation = function(locationId) {
+      console.log('閫夋嫨浣嶇疆:', locationId);
+      
+      // 绉婚櫎鎵€鏈夎鐨勯€変腑鏍峰紡
+      document.querySelectorAll('.location-row').forEach(row => {
+        row.style.backgroundColor = '';
+      });
+      
+      // 娣诲姞閫変腑琛岀殑鏍峰紡
+      const selectedRow = document.querySelector(`.location-row[data-id="${locationId}"]`);
+      if (selectedRow) {
+        selectedRow.style.backgroundColor = '#e0f7fa';
+      }
+      
+      // 鏌ユ壘骞舵樉绀轰綅缃俊锟?      const location = locations.find(loc => loc.id === locationId);
+      if (location) {
+        updateMapInfoPanel(location);
+        
+        // 鎵惧埌瀵瑰簲鐨勬爣璁板苟灞呬腑鏄剧�?
+        const marker = document.querySelector(`.map-marker[data-id="${locationId}"]`);
+        if (marker) {
+          centerMapOnMarker(marker);
+        }
+      }
+    };
+    
+    // 娣诲姞绛涢€夊姛鑳芥敮锟?    const filterSelect = document.getElementById('map-filter-select');
+    if (filterSelect) {
+      filterSelect.addEventListener('change', function() {
+          const filter = this.value;
+          
+        document.querySelectorAll('.location-row').forEach(row => {
+          const locationId = parseInt(row.dataset.id);
+          const location = locations.find(loc => loc.id === locationId);
+          
+          if (!location) return;
+          
+            let shouldShow = true;
+            
+            if (filter === 'china') {
+            shouldShow = location.country === '涓�?;
+            } else if (filter === 'international') {
+            shouldShow = location.country !== '涓�?;
+            } else if (filter === 'wild') {
+            shouldShow = location.type === 'wild' || (location.types && location.types.includes('wild'));
+            } else if (filter === 'captive') {
+            shouldShow = location.type === 'captive' || (location.types && location.types.includes('captive'));
+            } else if (filter === 'research') {
+            shouldShow = location.type === 'research' || (location.types && location.types.includes('research'));
+            }
+            
+              row.style.display = shouldShow ? '' : 'none';
+          });
+          
+          // 鏇存柊缁熻淇℃�?
+          updateFilterStats(locations, filter);
+          
+          // 鏇存柊鍦板浘鏍囪�?
+          updateMapMarkers(filter, locations);
+      });
+    }
+    
+    // 淇敼鏄剧ず妯″紡鍒囨崲鎸夐挳
+    const displayModeBtn = document.getElementById('display-mode-btn');
+    if (displayModeBtn) {
+      displayModeBtn.textContent = '鍦板浘浼樺厛';
+      displayModeBtn.addEventListener('click', function() {
+        const mapContainer = document.getElementById('draggable-map-container');
+        const tableContainer = document.querySelector('.locations-table-container');
+        
+        if (this.textContent === '鍦板浘浼樺厛') {
+          // 鍒囨崲鍒板湴鍥句紭鍏堟ā锟?          mapContainer.style.height = '70%';
+          tableContainer.style.height = '30%';
+          this.textContent = '琛ㄦ牸浼樺厛';
+    } else {
+          // 鍒囨崲鍒拌〃鏍间紭鍏堟ā�?          mapContainer.style.height = '40%';
+          tableContainer.style.height = '60%';
+          this.textContent = '鍦板浘浼樺厛';
+        }
+      });
+    }
+    
+    // 榛樿閫変腑绗竴涓綅�?    if (locations.length > 0) {
+      setTimeout(() => {
+        selectLocation(locations[0].id);
+      }, 100);
+    }
+    
+  } catch (error) {
+    console.error('鍒涘缓鐔婄尗鍒嗗竷琛ㄦ牸澶辫�?', error);
+    mapContainer.innerHTML = `
+      <div class="map-error" style="padding: 20px; text-align: center;">
+        <p>鏁版嵁鍔犺浇澶辫触锛岃绋嶅悗鍐嶈瘯�?/p>
+        <p style="color: #f44336; font-size: 12px;">${error.message}</p>
+      </div>
+    `;
+  }
+}
+
+// 鍦ㄥ湴鍥句笂娣诲姞鏍囪
+function addMarkersToMap(locations) {
+  const markersContainer = document.getElementById('map-markers');
+  if (!markersContainer) return;
+  
+  // 娓呯┖鐜版湁鏍囪�?
+  markersContainer.innerHTML = '';
+  
+  // 娣诲姞姣忎釜浣嶇疆鐨勬爣�?  locations.forEach(loc => {
+    // 纭畾绫诲瀷鏍峰紡
+    let typeClass;
+    if (loc.types && loc.types.length > 1) {
+      typeClass = 'multiple';
+    } else {
+      typeClass = loc.type;
+    }
+    
+    // 鍒涘缓鏍囪鍏冪�?
+    const marker = document.createElement('div');
+    marker.className = `map-marker ${typeClass}`;
+    marker.dataset.id = loc.id;
+    marker.title = loc.name;
+    
+    // 璁剧疆鏍囪浣嶇疆锛堜娇鐢ㄧ櫨鍒嗘瘮浠ラ€傚簲涓嶅悓灞忓箷澶у皬锟?    // 灏嗙粡绾害鏄犲皠鍒板湴鍥句笂鐨勭浉瀵逛綅�?    const left = ((loc.longitude + 180) / 360) * 100;
+    const top = ((90 - loc.latitude) / 180) * 100;
+    marker.style.left = `${left}%`;
+    marker.style.top = `${top}%`;
+    
+    // 濡傛灉鐔婄尗鏁伴噺瓒呰繃1锛屾坊鍔犳暟瀛楁爣锟?    if (loc.count > 1) {
+      const countLabel = document.createElement('span');
+      countLabel.className = 'marker-count';
+      countLabel.textContent = loc.count;
+      marker.appendChild(countLabel);
+    }
+    
+    // 娣诲姞鐐瑰嚮浜嬩�?
+    marker.addEventListener('click', () => {
+      selectLocation(loc.id);
+    });
+    
+    // 灏嗘爣璁版坊鍔犲埌瀹瑰�?
+    markersContainer.appendChild(marker);
+  });
+  
+  // 娣诲姞澶ч檰杞粨
+  
+}
+
+// 娣诲姞澶ч檰杞粨
+function addContinentOutlines() {
+  const mapBase = document.getElementById('map-base');
+  if (!mapBase) return;
+  
+  // 娓呴櫎涔嬪墠鐨勫唴锟?  mapBase.innerHTML = '';
+  
+  // 鏄剧ず鍔犺浇鐘讹�?  const loadingIndicator = document.createElement('div');
+  loadingIndicator.className = 'loading-spinner';
+  loadingIndicator.style.position = 'absolute';
+  loadingIndicator.style.top = '50%';
+  loadingIndicator.style.left = '50%';
+  loadingIndicator.style.transform = 'translate(-50%, -50%)';
+  
+  const loadingText = document.createElement('div');
+  loadingText.textContent = '姝ｅ湪鍔犺浇涓栫晫鍦板浘...';
+  loadingText.style.position = 'absolute';
+  loadingText.style.top = 'calc(50% + 40px)';
+  loadingText.style.left = '50%';
+  loadingText.style.transform = 'translateX(-50%)';
+  loadingText.style.color = '#333';
+  loadingText.style.fontWeight = 'bold';
+  
+  mapBase.appendChild(loadingIndicator);
+  mapBase.appendChild(loadingText);
+  
+  // 鍔犺浇GeoJSON鏁版�?
+  console.log('寮€濮嬪姞杞紾eoJSON鏁版�?..');
+  fetch('assets/data/world.json')
+    .then(response => {
+      console.log('GeoJSON鏁版嵁鍝嶅簲鐘讹�?', response.status);
+      if (!response.ok) {
+        throw new Error('鏃犳硶鍔犺浇涓栫晫鍦板浘鏁版�?);
+      }
+      return response.json();
+    })
+    .then(geoData => {
+      console.log('GeoJSON鏁版嵁鍔犺浇鎴愬姛锛屽紑濮嬪锟?..');
+      // 绉婚櫎鍔犺浇鎸囩ず锟?      if (loadingIndicator.parentNode) loadingIndicator.parentNode.removeChild(loadingIndicator);
+      if (loadingText.parentNode) loadingText.parentNode.removeChild(loadingText);
+      
+      // 鍒涘缓SVG鍏冪�?
+      const svgNS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(svgNS, "svg");
+      svg.setAttribute("width", "100%");
+      svg.setAttribute("height", "100%");
+      svg.style.position = "absolute";
+      svg.style.top = "0";
+      svg.style.left = "0";
+      
+      // 娣诲姞娴锋磱鑳屾�?
+      const ocean = document.createElementNS(svgNS, "rect");
+      ocean.setAttribute("width", "100%");
+      ocean.setAttribute("height", "100%");
+      ocean.setAttribute("fill", "#cfe8f3");
+      svg.appendChild(ocean);
+      
+      // 鍒涘缓鎶曞奖
+      const mapWidth = mapBase.clientWidth || 900;
+      const mapHeight = mapBase.clientHeight || 500;
+      
+      try {
+        console.log('寮€濮嬪鐞咷eoJSON鏁版�?..');
+        console.log('GeoJSON鏁版嵁瀵硅薄缁撴�?', Object.keys(geoData));
+        
+        // 鑾峰彇鍦扮悊鐗瑰�?
+        let features;
+        if (geoData.objects && geoData.objects.countries) {
+          // TopoJSON鏍煎�?
+          const countries = geoData.objects.countries;
+          console.log('浣跨敤countries瀵硅�?);
+          features = topojson.feature(geoData, countries).features;
+        } else if (geoData.objects && geoData.objects.land) {
+          // 鏈変簺TopoJSON浣跨敤land浣滀负瀵硅薄锟?          const land = geoData.objects.land;
+          console.log('浣跨敤land瀵硅�?);
+          features = topojson.feature(geoData, land).features;
+        } else if (geoData.objects && Object.keys(geoData.objects).length > 0) {
+          // 浣跨敤绗竴涓彲鐢ㄥ�?          const firstKey = Object.keys(geoData.objects)[0];
+          console.log('浣跨敤绗竴涓彲鐢ㄥ�?', firstKey);
+          features = topojson.feature(geoData, geoData.objects[firstKey]).features;
+        } else if (geoData.features) {
+          // 宸茬粡鏄疓eoJSON鏍煎�?
+          console.log('鐩存帴浣跨敤GeoJSON features');
+          features = geoData.features;
+    } else {
+          throw new Error('鏃犳硶璇嗗埆鐨勫湴鍥炬暟鎹牸锟?);
+        }
+        
+        console.log('澶勭悊鍚庣殑鐗瑰緛鏁伴噺:', features.length);
+        
+        // 璁＄畻鍦板浘鐨勮竟鐣屾
+        let bounds = {
+          min: { x: Infinity, y: Infinity },
+          max: { x: -Infinity, y: -Infinity }
+        };
+        
+        features.forEach(feature => {
+          if (!feature.geometry) return;
+          
+          const coords = feature.geometry.coordinates;
+          if (!coords) return;
+          
+          if (feature.geometry.type === 'Polygon') {
+            coords.forEach(ring => {
+              ring.forEach(point => {
+                bounds.min.x = Math.min(bounds.min.x, point[0]);
+                bounds.min.y = Math.min(bounds.min.y, point[1]);
+                bounds.max.x = Math.max(bounds.max.x, point[0]);
+                bounds.max.y = Math.max(bounds.max.y, point[1]);
+              });
+            });
+          } else if (feature.geometry.type === 'MultiPolygon') {
+            coords.forEach(polygon => {
+              polygon.forEach(ring => {
+                ring.forEach(point => {
+                  bounds.min.x = Math.min(bounds.min.x, point[0]);
+                  bounds.min.y = Math.min(bounds.min.y, point[1]);
+                  bounds.max.x = Math.max(bounds.max.x, point[0]);
+                  bounds.max.y = Math.max(bounds.max.y, point[1]);
+                });
+              });
+            });
+          }
+        });
+        
+        // 璁＄畻缂╂斁姣斾�?
+        const xScale = mapWidth / (bounds.max.x - bounds.min.x);
+        const yScale = mapHeight / (bounds.max.y - bounds.min.y);
+        const scale = Math.min(xScale, yScale) * 0.9; // 鐣欎竴浜涜竟�?        
+        // 璁＄畻骞崇Щ閲忥紝浣垮湴鍥惧眳�?        const xOffset = (mapWidth - (bounds.max.x - bounds.min.x) * scale) / 2;
+        const yOffset = (mapHeight - (bounds.max.y - bounds.min.y) * scale) / 2;
+        
+        // 缁樺埗姣忎釜鍥藉�?鍦板�?
+        features.forEach(feature => {
+          if (!feature.geometry) return;
+          
+          const path = document.createElementNS(svgNS, "path");
+          let d = "";
+          
+          if (feature.geometry.type === 'Polygon') {
+            feature.geometry.coordinates.forEach(ring => {
+              // 纭繚鐜笂鏈夎冻澶熺殑�?              if (ring.length < 3) return;
+              
+              // 寮€濮嬫柊鐨勫瓙璺�?
+              const firstPoint = ring[0];
+              const x0 = (firstPoint[0] - bounds.min.x) * scale + xOffset;
+              // 鍙嶈浆Y杞存柟鍚戯紝浣垮寳鍗婄悆鍦ㄤ笂锟?              const y0 = mapHeight - ((firstPoint[1] - bounds.min.y) * scale + yOffset);
+              d += `M${x0},${y0} `;
+              
+              // 娣诲姞鍏朵綑�?              for (let i = 1; i < ring.length; i++) {
+                const point = ring[i];
+                const x = (point[0] - bounds.min.x) * scale + xOffset;
+                // 鍙嶈浆Y杞存柟鍚戯紝浣垮寳鍗婄悆鍦ㄤ笂锟?                const y = mapHeight - ((point[1] - bounds.min.y) * scale + yOffset);
+                d += `L${x},${y} `;
+              }
+              
+              // 闂悎璺緞
+              d += "Z ";
+            });
+          } else if (feature.geometry.type === 'MultiPolygon') {
+            feature.geometry.coordinates.forEach(polygon => {
+              polygon.forEach(ring => {
+                // 纭繚鐜笂鏈夎冻澶熺殑�?                if (ring.length < 3) return;
+                
+                // 寮€濮嬫柊鐨勫瓙璺�?
+                const firstPoint = ring[0];
+                const x0 = (firstPoint[0] - bounds.min.x) * scale + xOffset;
+                // 鍙嶈浆Y杞存柟鍚戯紝浣垮寳鍗婄悆鍦ㄤ笂锟?                const y0 = mapHeight - ((firstPoint[1] - bounds.min.y) * scale + yOffset);
+                d += `M${x0},${y0} `;
+                
+                // 娣诲姞鍏朵綑�?                for (let i = 1; i < ring.length; i++) {
+                  const point = ring[i];
+                  const x = (point[0] - bounds.min.x) * scale + xOffset;
+                  // 鍙嶈浆Y杞存柟鍚戯紝浣垮寳鍗婄悆鍦ㄤ笂锟?                  const y = mapHeight - ((point[1] - bounds.min.y) * scale + yOffset);
+                  d += `L${x},${y} `;
+                }
+                
+                // 闂悎璺緞
+                d += "Z ";
+              });
+            });
+          }
+          
+          path.setAttribute("d", d);
+          path.setAttribute("fill", "#e8e8e8");
+          path.setAttribute("stroke", "#ccc");
+          path.setAttribute("stroke-width", "0.5");
+          path.setAttribute("class", "country");
+          
+          // 娣诲姞榧犳爣鎮仠鏁堟灉
+          path.addEventListener('mouseover', () => {
+            path.setAttribute("fill", "#d4d4d4");
+          });
+          
+          path.addEventListener('mouseout', () => {
+            path.setAttribute("fill", "#e8e8e8");
+          });
+          
+          svg.appendChild(path);
+        });
+        
+        mapBase.appendChild(svg);
+        
+        // 娣诲姞缁忕含搴︾綉鏍肩嚎
+        addGridLines();
+        
+        // 娣诲姞鍦板浘娉ㄩ�?
+        const mapNote = document.createElement('div');
+        mapNote.className = 'map-note';
+        mapNote.textContent = '涓栫晫鍦板浘 - 鍩轰簬鐪熷疄鍦扮悊鏁版嵁';
+        mapNote.style.position = 'absolute';
+        mapNote.style.bottom = '10px';
+        mapNote.style.left = '50%';
+        mapNote.style.transform = 'translateX(-50%)';
+        mapNote.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+        mapNote.style.padding = '5px 10px';
+        mapNote.style.borderRadius = '3px';
+        mapNote.style.fontSize = '12px';
+        mapNote.style.color = '#666';
+        mapBase.appendChild(mapNote);
+      } catch (error) {
+        console.error('澶勭悊GeoJSON鏁版嵁鏃跺嚭�?', error);
+        // 绉婚櫎鍔犺浇鎸囩ず锟?        if (loadingIndicator.parentNode) loadingIndicator.parentNode.removeChild(loadingIndicator);
+        if (loadingText.parentNode) loadingText.parentNode.removeChild(loadingText);
+        
+        // 鍒涘缓澶囩敤绠€鍖栧湴锟?        createBackupMap();
+      }
+    })
+    .catch(error => {
+      console.error('鍔犺浇涓栫晫鍦板浘澶辫触:', error);
+      // 绉婚櫎鍔犺浇鎸囩ず锟?      if (loadingIndicator.parentNode) loadingIndicator.parentNode.removeChild(loadingIndicator);
+      if (loadingText.parentNode) loadingText.parentNode.removeChild(loadingText);
+      
+      // 鏄剧ず閿欒淇℃�?
+      const errorText = document.createElement('div');
+      errorText.textContent = '鍔犺浇涓栫晫鍦板浘澶辫触锛屾樉绀哄鐢ㄧ畝鍖栧湴鍥撅�?;
+      errorText.style.position = 'absolute';
+      errorText.style.top = '10px';
+      errorText.style.left = '10px';
+      errorText.style.color = '#f44336';
+      errorText.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+      errorText.style.padding = '5px 10px';
+      errorText.style.borderRadius = '3px';
+      mapBase.appendChild(errorText);
+      
+      // 鍒涘缓澶囩敤绠€鍖栧湴锟?      createBackupMap();
+    });
+  
+  // 澶囩敤鏂规锛氬垱寤虹畝鍖栫殑涓栫晫鍦板�?
+  function createBackupMap() {
+    // 鍒涘缓SVG鍏冪�?
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.style.position = "absolute";
+    svg.style.top = "0";
+    svg.style.left = "0";
+    
+    // 娣诲姞娴锋磱鑳屾�?
+    const ocean = document.createElementNS(svgNS, "rect");
+    ocean.setAttribute("width", "100%");
+    ocean.setAttribute("height", "100%");
+    ocean.setAttribute("fill", "#cfe8f3");
+    svg.appendChild(ocean);
+    
+    // 绠€鍖栫殑澶ч檰杞粨
+    const continents = [
+      { name: '浜氭�?, left: '60%', top: '30%', width: '25%', height: '35%' },
+      { name: '鍖楃編锟?, left: '15%', top: '25%', width: '25%', height: '30%' },
+      { name: '娆ф床', left: '45%', top: '20%', width: '15%', height: '25%' },
+      { name: '闈炴�?, left: '45%', top: '45%', width: '20%', height: '35%' },
+      { name: '鍗楃編锟?, left: '25%', top: '60%', width: '15%', height: '30%' },
+      { name: '澶ф磱�?, left: '80%', top: '60%', width: '15%', height: '25%' }
+    ];
+    
+    mapBase.appendChild(svg);
+    
+    // 鍒涘缓骞舵坊鍔犳瘡涓ぇ闄嗙殑鍏冪礌
+    continents.forEach(continent => {
+      const continentEl = document.createElement('div');
+      continentEl.className = 'continent';
+      continentEl.style.left = continent.left;
+      continentEl.style.top = continent.top;
+      continentEl.style.width = continent.width;
+      continentEl.style.height = continent.height;
+      continentEl.title = continent.name;
+      mapBase.appendChild(continentEl);
+    });
+    
+    // 娣诲姞鎻愮ず淇℃�?
+    const mapNote = document.createElement('div');
+    mapNote.className = 'map-note';
+    mapNote.textContent = '鍔犺浇涓栫晫鍦板浘澶辫触锛屾樉绀哄鐢ㄧ畝鍖栧湴�?;
+    mapNote.style.position = 'absolute';
+    mapNote.style.bottom = '10px';
+    mapNote.style.left = '0';
+    mapNote.style.right = '0';
+    mapNote.style.textAlign = 'center';
+    mapNote.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+    mapNote.style.padding = '5px';
+    mapNote.style.fontSize = '12px';
+    mapNote.style.color = '#666';
+    mapBase.appendChild(mapNote);
+    
+    // 娣诲姞缁忕含搴︾綉鏍肩嚎
+    addGridLines();
+  }
+  
+  // 娣诲姞缁忕含搴︾綉鏍肩嚎
+  function addGridLines() {
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'grid-lines';
+    gridContainer.style.position = 'absolute';
+    gridContainer.style.top = '0';
+    gridContainer.style.left = '0';
+    gridContainer.style.width = '100%';
+    gridContainer.style.height = '100%';
+    gridContainer.style.pointerEvents = 'none';
+    
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.style.position = "absolute";
+    svg.style.top = "0";
+    svg.style.left = "0";
+    svg.style.zIndex = "2";
+    
+    // 娣诲姞缁忕含搴︾綉鏍肩嚎
+    const gridColor = "rgba(255, 255, 255, 0.3)";
+    const gridWidth = "0.5";
+    
+    // 娣诲姞缁忓害�?    for (let i = 0; i <= 900; i += 100) {
+      const longitudeLine = document.createElementNS(svgNS, "line");
+      longitudeLine.setAttribute("x1", i);
+      longitudeLine.setAttribute("y1", "0");
+      longitudeLine.setAttribute("x2", i);
+      longitudeLine.setAttribute("y2", "800");
+      longitudeLine.setAttribute("stroke", gridColor);
+      longitudeLine.setAttribute("stroke-width", gridWidth);
+      svg.appendChild(longitudeLine);
+    }
+    
+    // 娣诲姞绾害锟?    for (let i = 0; i <= 800; i += 100) {
+      const latitudeLine = document.createElementNS(svgNS, "line");
+      latitudeLine.setAttribute("x1", "0");
+      latitudeLine.setAttribute("y1", i);
+      latitudeLine.setAttribute("x2", "900");
+      latitudeLine.setAttribute("y2", i);
+      latitudeLine.setAttribute("stroke", gridColor);
+      latitudeLine.setAttribute("stroke-width", gridWidth);
+      svg.appendChild(latitudeLine);
+    }
+    
+    gridContainer.appendChild(svg);
+    mapBase.appendChild(gridContainer);
+  }
+}
+
+// 鏇存柊鍦板浘鏍囪锛堟牴鎹瓫閫夋潯浠讹�?
+function updateMapMarkers(filter, locations) {
+  const markers = document.querySelectorAll('.map-marker');
+  
+  markers.forEach(marker => {
+    const locationId = parseInt(marker.dataset.id);
+    const location = locations.find(loc => loc.id === locationId);
+    
+    if (!location) return;
+    
+    let shouldShow = true;
+    
+    if (filter === 'china') {
+      shouldShow = location.country === '涓�?;
+    } else if (filter === 'international') {
+      shouldShow = location.country !== '涓�?;
+    } else if (filter === 'wild') {
+      shouldShow = location.type === 'wild' || (location.types && location.types.includes('wild'));
+    } else if (filter === 'captive') {
+      shouldShow = location.type === 'captive' || (location.types && location.types.includes('captive'));
+    } else if (filter === 'research') {
+      shouldShow = location.type === 'research' || (location.types && location.types.includes('research'));
+    }
+    
+    marker.style.display = shouldShow ? '' : 'none';
+  });
+}
+
+// 鍒濆鍖栧彲鎷栨嫿鍦板浘
+function initDraggableMap() {
+  const draggableMap = document.getElementById('draggable-map-container');
+  if (!draggableMap) return;
+  
+  // 鑾峰彇鍦板浘瀹瑰�?
+  const mapBase = document.getElementById('map-base');
+  const mapMarkers = document.getElementById('map-markers');
+  
+  // 瀛樺偍鍦板浘鐘讹�?  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let mapX = 0;
+  let mapY = 0;
+  let zoomLevel = 1;
+  
+  // 鏇存柊鍦板浘鍙樻�?
+  function updateMapTransform() {
+    if (mapBase && mapMarkers) {
+      // 搴旂敤鍙樻崲鍒板湴鍥惧簳鍥惧拰鏍囪�?      const transform = `translate(${mapX}px, ${mapY}px) scale(${zoomLevel})`;
+      mapBase.style.transform = transform;
+      mapMarkers.style.transform = transform;
+    }
+  }
+  
+  // 娣诲姞榧犳爣浜嬩欢澶勭悊
+  draggableMap.addEventListener('mousedown', (e) => {
+    // 涓嶈澶勭悊鏍囪鐐瑰嚮浜嬩�?
+    if (e.target.classList.contains('map-marker') || 
+        e.target.parentElement.classList.contains('map-marker')) {
+      return;
+    }
+    
+    isDragging = true;
+    startX = e.clientX - mapX;
+    startY = e.clientY - mapY;
+    draggableMap.style.cursor = 'grabbing';
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    
+    mapX = e.clientX - startX;
+    mapY = e.clientY - startY;
+    updateMapTransform();
+  });
+  
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    draggableMap.style.cursor = 'grab';
+  });
+  
+  // 娣诲姞缂╂斁鍔熻�?
+  draggableMap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    
+    // 纭畾榧犳爣浣嶇疆鐩稿浜庡湴鍥惧鍣ㄧ殑鍧愭爣
+    const rect = draggableMap.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // 璁＄畻榧犳爣鍦ㄥ綋鍓嶅彉鎹笅鐨勫湴鍥惧潗锟?    const mapMouseX = (mouseX - mapX) / zoomLevel;
+    const mapMouseY = (mouseY - mapY) / zoomLevel;
+    
+    // 鏍规嵁婊氳疆鏂瑰悜璋冩暣缂╂斁绾у�?
+    const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
+    const newZoomLevel = Math.max(0.5, Math.min(3, zoomLevel + zoomDelta));
+    
+    // 鍙湁鍦ㄧ缉鏀剧骇鍒敼鍙樻椂鎵嶉噸鏂拌绠椾綅锟?    if (newZoomLevel !== zoomLevel) {
+      // 璋冩暣缂╂斁绾у埆
+      zoomLevel = newZoomLevel;
+      
+      // 閲嶆柊璁＄畻鍦板浘鍋忕Щ锛屼繚鎸侀紶鏍囨寚鍚戠殑鍦板浘鐐逛笉�?      mapX = mouseX - mapMouseX * zoomLevel;
+      mapY = mouseY - mapMouseY * zoomLevel;
+      
+      // 鏇存柊鍙樻崲
+      updateMapTransform();
+    }
+  });
+  
+  // 娣诲姞瑙︽懜灞忔敮锟?  let touchStartX = 0;
+  let touchStartY = 0;
+  let initialDistance = 0;
+  
+  draggableMap.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      // 鍗曟寚瑙︽懜 - 绉诲姩鍦板浘
+      touchStartX = e.touches[0].clientX - mapX;
+      touchStartY = e.touches[0].clientY - mapY;
+    } else if (e.touches.length === 2) {
+      // 鍙屾寚瑙︽懜 - 缂╂斁鍦板浘
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      initialDistance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+    }
+  });
+  
+  draggableMap.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    
+    if (e.touches.length === 1) {
+      // 鍗曟寚绉诲姩鍦板�?
+      mapX = e.touches[0].clientX - touchStartX;
+      mapY = e.touches[0].clientY - touchStartY;
+      updateMapTransform();
+    } else if (e.touches.length === 2) {
+      // 鍙屾寚缂╂斁
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const currentDistance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      
+      // 璁＄畻涓績�?      const centerX = (touch1.clientX + touch2.clientX) / 2;
+      const centerY = (touch1.clientY + touch2.clientY) / 2;
+      
+      // 鑾峰彇鍦板浘瀹瑰櫒浣嶇疆
+      const rect = draggableMap.getBoundingClientRect();
+      const containerCenterX = centerX - rect.left;
+      const containerCenterY = centerY - rect.top;
+      
+      // 璁＄畻涓績鐐瑰湪褰撳墠鍙樻崲涓嬬殑鍦板浘鍧愭爣
+      const mapCenterX = (containerCenterX - mapX) / zoomLevel;
+      const mapCenterY = (containerCenterY - mapY) / zoomLevel;
+      
+      // 璁＄畻鏂扮殑缂╂斁绾у�?
+      if (initialDistance > 0) {
+        const newZoomLevel = Math.max(0.5, Math.min(3, zoomLevel * (currentDistance / initialDistance)));
+        
+        // 鍙湁鍦ㄧ缉鏀剧骇鍒樉钁楀彉鍖栨椂鎵嶉噸鏂拌绠椾綅锟?        if (Math.abs(newZoomLevel - zoomLevel) > 0.01) {
+          zoomLevel = newZoomLevel;
+          
+          // 閲嶆柊璁＄畻鍦板浘鍋忕Щ锛屼繚鎸佷腑蹇冪偣涓嶅�?
+          mapX = containerCenterX - mapCenterX * zoomLevel;
+          mapY = containerCenterY - mapCenterY * zoomLevel;
+          
+          // 鏇存柊鍒濆璺濈�?
+          initialDistance = currentDistance;
+          
+          // 鏇存柊鍙樻崲
+          updateMapTransform();
+        }
+      }
+    }
+  });
+  
+  // 娣诲姞閿洏鎺у埗
+  document.addEventListener('keydown', (e) => {
+    // 鑾峰彇鍦板浘瀹瑰櫒鏄惁澶勪簬娲诲姩鐘讹�?    const isMapActive = document.activeElement === document.body && 
+                       draggableMap.contains(document.activeElement) ||
+                       draggableMap.matches(':hover');
+    
+    if (!isMapActive) return;
+    
+    // 璁＄畻绉诲姩閫熷�?
+    const moveAmount = 20 / zoomLevel;
+    
+    // 鏂瑰悜閿帶�?    switch (e.key) {
+      case 'ArrowUp':
+        mapY += moveAmount;
+        updateMapTransform();
+        e.preventDefault();
+        break;
+      case 'ArrowDown':
+        mapY -= moveAmount;
+        updateMapTransform();
+        e.preventDefault();
+        break;
+      case 'ArrowLeft':
+        mapX += moveAmount;
+        updateMapTransform();
+        e.preventDefault();
+        break;
+      case 'ArrowRight':
+        mapX -= moveAmount;
+        updateMapTransform();
+        e.preventDefault();
+        break;
+      case '+':
+      case '=':
+        zoomLevel = Math.min(3, zoomLevel + 0.1);
+        updateMapTransform();
+        e.preventDefault();
+        break;
+      case '-':
+        zoomLevel = Math.max(0.5, zoomLevel - 0.1);
+        updateMapTransform();
+        e.preventDefault();
+        break;
+      case '0':
+        // 閲嶇疆瑙嗗浘
+        mapX = 0;
+        mapY = 0;
+        zoomLevel = 1;
+        updateMapTransform();
+        e.preventDefault();
+        break;
+    }
+  });
+  
+  // 璁剧疆鍦板浘榛樿鏍峰紡鍜屽垵濮嬭�?  draggableMap.style.cursor = 'grab';
+  mapBase.style.transformOrigin = '0 0';
+  mapMarkers.style.transformOrigin = '0 0';
+  
+  // 鍒濆鍖栧湴鍥句綅缃紙灞呬腑锟?  const rect = draggableMap.getBoundingClientRect();
+  mapX = rect.width / 4;
+  updateMapTransform();
+}
+  
+// 灏嗗湴鍥句腑蹇冭皟鏁村埌鐗瑰畾鏍囪
+function centerMapOnMarker(marker) {
+  if (!marker) return;
+  
+  // 鑾峰彇鍦板浘瀹瑰櫒鍜屾爣璁板锟?  const mapContainer = document.getElementById('draggable-map-container');
+  const mapBase = document.getElementById('map-base');
+  const mapMarkers = document.getElementById('map-markers');
+  
+  if (!mapContainer || !mapBase || !mapMarkers) return;
+  
+  // 鑾峰彇褰撳墠鍙樻崲淇℃伅
+  const transform = mapBase.style.transform;
+  const match = transform.match(/translate\((.+?)px,\s*(.+?)px\)\s*scale\((.+?)\)/);
+  
+  if (!match) return;
+  
+  const currentX = parseFloat(match[1]);
+  const currentY = parseFloat(match[2]);
+  const currentZoom = parseFloat(match[3]);
+  
+  // 鑾峰彇瀹瑰櫒鍜屾爣璁扮殑浣嶇疆鍜屽昂锟?  const containerRect = mapContainer.getBoundingClientRect();
+  const markerRect = marker.getBoundingClientRect();
+  
+  // 璁＄畻鏍囪鍦ㄥ彉鎹㈠墠鐨勫師濮嬩綅�?  const markerStyle = getComputedStyle(marker);
+  const originalLeft = parseFloat(markerStyle.left) / 100 * containerRect.width;
+  const originalTop = parseFloat(markerStyle.top) / 100 * containerRect.height;
+  
+  // 璁＄畻鏂扮殑浣嶇疆锛堜娇鏍囪浣嶄簬瀹瑰櫒涓績�?  const targetX = containerRect.width / 2 - originalLeft * currentZoom;
+  const targetY = containerRect.height / 2 - originalTop * currentZoom;
+  
+  // 骞虫粦杩囨浮鍒版柊浣嶇疆
+  mapBase.style.transition = 'transform 0.5s ease-out';
+  mapMarkers.style.transition = 'transform 0.5s ease-out';
+  
+  mapBase.style.transform = `translate(${targetX}px, ${targetY}px) scale(${currentZoom})`;
+  mapMarkers.style.transform = `translate(${targetX}px, ${targetY}px) scale(${currentZoom})`;
+  
+  // 杩囨浮缁撴潫鍚庢竻闄よ繃娓″睘�?  setTimeout(() => {
+    mapBase.style.transition = '';
+    mapMarkers.style.transition = '';
+  }, 500);
+}
+  
+// 鏇存柊鍦板浘淇℃伅闈㈡澘锛屾樉绀洪€変腑鐨勬爣璁颁俊�?function updateMapInfoPanel(location) {
+  const infoPanel = document.getElementById('map-info-content');
+  if (!infoPanel) return;
+  
+  // 纭畾绫诲瀷鏂囨湰鍜屾牱锟?  let typeClass, typeText;
+  if (location.types && location.types.length > 1) {
+    typeClass = 'multiple';
+    typeText = '澶氬姛鑳藉満鎵€';
+  } else if (location.type === 'wild') {
+    typeClass = 'wild';
+    typeText = '閲庣敓绉嶇兢';
+  } else if (location.type === 'captive') {
+    typeClass = 'captive';
+    typeText = '鍦堝吇鐔婄尗';
+  } else {
+    typeClass = 'research';
+    typeText = '鐮旂┒涓績';
+  }
+  
+  // 鏋勫缓HTML
+  const html = `
+    <h4>${location.name}</h4>
+    <div class="type-badge ${typeClass}">${typeText}</div>
+    <div class="map-info-address">
+      <strong>鍦板潃锟?/strong>${location.address || '鏆傛棤璇︾粏鍦板�?}
+    </div>
+    <div class="map-info-details">
+      <div class="map-info-item">
+        <span class="map-info-label">鎵€鍦ㄥ浗锟?鍦板�?/span>
+        <span class="map-info-value">${location.country}</span>
+      </div>
+      <div class="map-info-item">
+        <span class="map-info-label">鐔婄尗鏁伴噺</span>
+        <span class="map-info-value">${location.count} �?/span>
+      </div>
+        <div class="map-info-item">
+        <span class="map-info-label">寤虹珛鏃堕棿</span>
+        <span class="map-info-value">${location.established || '鏈�?}</span>
+        </div>
+      <div class="map-info-item">
+        <span class="map-info-label">寮€鏀剧姸�?/span>
+        <span class="map-info-value">${location.openStatus || '鏈�?}</span>
+      </div>
+    </div>
+    <div class="map-info-description">
+      <p>${location.description || '鏆傛棤璇︾粏鎻忚堪淇℃伅'}</p>
+    </div>
+  `;
+  
+  infoPanel.innerHTML = html;
+}
+
+// 绛涢€夌唺鐚綅�?(Leaflet鐗堟�?
+function filterPandaLocations(filter, locations) {
+  const mapContainer = document.getElementById('panda-map-container');
+  if (!mapContainer) return;
+  
+  // 鑾峰彇鍦板浘瀹炰�?
+  let map = null;
+  // 鏌ユ壘鎵€鏈夊湴鍥惧疄锟?  for (const key in L) {
+    if (L[key] && L[key]._container === mapContainer) {
+      map = L[key];
+      break;
+    }
+  }
+  
+  if (!map) return;
+  
+  // 鏇存柊绛涢€夋寜閽牱锟?  const filterSelect = document.getElementById('map-filter-select');
+  if (filterSelect) {
+    // 娣诲姞閫夋嫨鍔ㄧ敾鏁堟灉
+    filterSelect.classList.add('active');
+    setTimeout(() => {
+      filterSelect.classList.remove('active');
+    }, 500);
+  }
+  
+  // 鏍规嵁绛涢€夋潯浠惰繃婊や綅�?  let filteredLocations = [];
+  let filterName = '';
+  
+  switch (filter) {
+    case 'china':
+      filteredLocations = locations.filter(loc => loc.country === '涓�?);
+      filterName = '涓浗澶ч�?;
+      break;
+    case 'international':
+      filteredLocations = locations.filter(loc => loc.country !== '涓�?);
+      filterName = '鍥介檯鏈烘�?;
+      break;
+    case 'wild':
+      filteredLocations = locations.filter(loc => {
+        return (loc.types && loc.types.includes('wild')) || loc.type === 'wild';
+      });
+      filterName = '閲庣敓绉嶇兢';
+      break;
+    case 'captive':
+      filteredLocations = locations.filter(loc => {
+        return (loc.types && loc.types.includes('captive')) || loc.type === 'captive';
+      });
+      filterName = '鍦堝吇鐔婄尗';
+      break;
+    case 'research':
+      filteredLocations = locations.filter(loc => {
+        return (loc.types && loc.types.includes('research')) || loc.type === 'research';
+      });
+      filterName = '鐮旂┒涓績';
+      break;
+    default:
+      filteredLocations = locations;
+      filterName = '鎵€鏈夌唺锟?;
+  }
+  
+  // 娣诲姞杩囨浮鍔ㄧ�?
+  const fadeOutMarkers = () => {
+    // 鎵惧埌鎵€鏈夋爣�?    const markers = document.querySelectorAll('.leaflet-marker-icon, .leaflet-marker-shadow');
+    
+    // 娣诲姞娣″嚭鏁堟�?
+    markers.forEach(marker => {
+      marker.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      marker.style.opacity = '0';
+      marker.style.transform = 'scale(0.8)';
+    });
+    
+    // 鏄剧ず鍔犺浇鍔ㄧ�?
+    const loadingElement = document.createElement('div');
+    loadingElement.className = 'map-loading';
+    loadingElement.style.opacity = '0';
+    loadingElement.innerHTML = '<div class="map-loading-spinner"></div>';
+    mapContainer.appendChild(loadingElement);
+    
+    // 娣″叆鍔犺浇鍔ㄧ敾
+    setTimeout(() => {
+      loadingElement.style.transition = 'opacity 0.3s ease';
+      loadingElement.style.opacity = '1';
+    }, 10);
+    
+    // 寤惰繜鍚庢竻闄ょ幇鏈夋爣璁帮紝淇濈暀搴曞浘鍥惧眰
+    setTimeout(() => {
+      map.eachLayer(function(layer) {
+        // 淇濈暀搴曞浘鍥惧眰(TileLayer)锛岀Щ闄ゆ墍鏈夊叾浠栧浘锟?        if (!(layer instanceof L.TileLayer)) {
+          map.removeLayer(layer);
+        }
+      });
+      
+      // 閲嶆柊娣诲姞搴曞�?
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+      
+      // 娣诲姞杩囨护鍚庣殑鏍囪
+      addPandaMarkersLeaflet(map, filteredLocations);
+      
+      // 娣″嚭鍔犺浇鍔ㄧ敾
+      setTimeout(() => {
+        loadingElement.style.opacity = '0';
+        // 绉婚櫎鍔犺浇鍔ㄧ�?
+        setTimeout(() => {
+          if (mapContainer.contains(loadingElement)) {
+            mapContainer.removeChild(loadingElement);
+          }
+        }, 300);
+      }, 500);
+    }, 300);
+  };
+  
+  // 鎵ц娣″嚭鍔ㄧ�?
+  fadeOutMarkers();
+  
+  // 鏄剧ず绛涢€夋彁�?  const filterNotice = document.createElement('div');
+  filterNotice.className = 'map-filter-notice';
+  filterNotice.textContent = `宸茬瓫锟? ${filterName}`;
+  filterNotice.style.position = 'absolute';
+  filterNotice.style.bottom = '10px';
+  filterNotice.style.right = '10px';
+  filterNotice.style.background = 'rgba(0, 0, 0, 0.7)';
+  filterNotice.style.color = 'white';
+  filterNotice.style.padding = '8px 15px';
+  filterNotice.style.borderRadius = '4px';
+  filterNotice.style.fontSize = '14px';
+  filterNotice.style.zIndex = '1000';
+  filterNotice.style.opacity = '0';
+  filterNotice.style.transition = 'opacity 0.3s ease';
+  
+  mapContainer.appendChild(filterNotice);
+  
+  // 鏄剧ず閫氱煡
+  setTimeout(() => {
+    filterNotice.style.opacity = '1';
+    
+    // 寤惰繜鍚庨殣钘忛€氱�?
+    setTimeout(() => {
+      filterNotice.style.opacity = '0';
+      
+      // 绉婚櫎閫氱煡鍏冪�?
+      setTimeout(() => {
+        if (mapContainer.contains(filterNotice)) {
+          mapContainer.removeChild(filterNotice);
+        }
+      }, 300);
+    }, 2000);
+  }, 800);
+  
+  // 鏇存柊缁熻鏁版嵁鏄剧ず
+  updateFilterStats(filteredLocations, filter);
+}
+
+// 鏇存柊绛涢€夊悗鐨勭粺璁℃暟�?function updateFilterStats(locations, filter) {
+  const mapInfoContent = document.getElementById('map-info-content');
+  if (!mapInfoContent) return;
+  
+  // 璁＄畻缁熻鏁版�?
+  const totalPandas = locations.reduce((sum, loc) => sum + loc.count, 0);
+  const wildPandas = locations
+    .filter(loc => loc.type === 'wild')
+    .reduce((sum, loc) => sum + loc.count, 0);
+  const captivePandas = locations
+    .filter(loc => loc.type === 'captive')
+    .reduce((sum, loc) => sum + loc.count, 0);
+  const researchPandas = locations
+    .filter(loc => loc.type === 'research')
+    .reduce((sum, loc) => sum + loc.count, 0);
+  const countries = [...new Set(locations.map(loc => loc.country))].length;
+  
+  // 鑾峰彇绛涢€夊悕�?  let filterName = '';
+  switch (filter) {
+    case 'china': filterName = '涓浗澶ч�?; break;
+    case 'international': filterName = '鍥介檯鏈烘�?; break;
+    case 'wild': filterName = '閲庣敓绉嶇兢'; break;
+    case 'captive': filterName = '鍦堝吇鐔婄尗'; break;
+    case 'research': filterName = '鐮旂┒涓績'; break;
+    default: filterName = '鎵€鏈夌唺锟?;
+  }
+  
+  // 濡傛灉娌℃湁閫変腑鐗瑰畾鐔婄尗锛屾樉绀洪粯璁ゆ彁锟?  if (!mapInfoContent.querySelector('h4') || mapInfoContent.querySelector('h4').textContent === '鐔婄尗鍒嗗竷淇℃�?) {
+    mapInfoContent.innerHTML = `
+      <p>褰撳墠绛涳拷? <strong>${filterName}</strong></p>
+      <p>鐐瑰嚮鍦板浘涓婄殑鏍囪鏌ョ湅璇︾粏淇℃�?/p>
+      <div class="map-stats">
+        <div class="map-stat-item">
+          <span class="map-stat-label">鐔婄尗鎬绘暟</span>
+          <span class="map-stat-value">${totalPandas}�?/span>
+        </div>
+        <div class="map-stat-item">
+          <span class="map-stat-label">閲庣敓鐔婄尗</span>
+          <span class="map-stat-value">${wildPandas}�?/span>
+        </div>
+        <div class="map-stat-item">
+          <span class="map-stat-label">鍦堝吇鐔婄尗</span>
+          <span class="map-stat-value">${captivePandas}�?/span>
+        </div>
+        <div class="map-stat-item">
+          <span class="map-stat-label">鐮旂┒涓績鐔婄�?/span>
+          <span class="map-stat-value">${researchPandas}�?/span>
+        </div>
+        <div class="map-stat-item">
+          <span class="map-stat-label">鍒嗗竷鍥藉/鍦板�?/span>
+          <span class="map-stat-value">${countries}�?/span>
+        </div>
+        <div class="map-stat-item">
+          <span class="map-stat-label">鍒嗗竷鐐逛綅鏁伴�?/span>
+          <span class="map-stat-value">${locations.length}�?/span>
+        </div>
+      </div>
+    `;
+    
+    // 娣诲姞缁熻椤圭洰鍔ㄧ敾
+    setTimeout(() => {
+      const statItems = mapInfoContent.querySelectorAll('.map-stat-item');
+      statItems.forEach((item, index) => {
+        item.style.opacity = '0';
+        item.style.transform = 'translateY(10px)';
+        item.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        
+        setTimeout(() => {
+          item.style.opacity = '1';
+          item.style.transform = 'translateY(0)';
+        }, index * 100);
+      });
+    }, 100);
+  }
+}
+
+// 鑾峰彇榛樿鐔婄尗浣嶇疆鏁版�?
+function getDefaultPandaLocations() {
+  return [
+    {
+      id: 1,
+      name: '鍥涘窛鍗ч緳鍥藉绾ц嚜鐒朵繚鎶ゅ尯',
+      address: '鍥涘窛鐪侀樋鍧濊棌鏃忕緦鏃忚嚜娌诲窞姹跺窛�?,
+      country: '涓�?,
+      latitude: 30.8746,
+      longitude: 103.1486,
+      count: 150,
+      type: 'wild',
+      description: '涓浗鏈€澶х殑澶х唺鐚嚜鐒舵爾鎭湴锛屼篃鏄ぇ鐔婄尗淇濇姢鐮旂┒涓績鎵€鍦ㄥ湴锟?,
+      established: '1963�?,
+      imageUrl: './assets/wolong.jpg'
+    },
+    {
+      id: 2,
+      name: '闄曡タ浣涘潽鍥藉绾ц嚜鐒朵繚鎶ゅ�?,
+      address: '闄曡タ鐪佹眽涓競浣涘潽�?,
+      country: '涓�?,
+      latitude: 33.6706,
+      longitude: 107.9478,
+      count: 80,
+      type: 'wild',
+      description: '绉﹀箔灞辫剦涓渶閲嶈鐨勫ぇ鐔婄尗鏍栨伅鍦颁箣涓€锛屾嫢鏈夎緝涓哄畬鏁寸殑澶х唺鐚敓鎬佺郴缁燂�?,
+      established: '1978�?,
+      imageUrl: './assets/foping.jpg'
+    },
+    {
+      id: 3,
+      name: '鎴愰兘澶х唺鐚箒鑲茬爺绌跺熀�?,
+      address: '鍥涘窛鐪佹垚閮藉競鎴愬崕鍖虹唺鐚ぇ�?375�?,
+      country: '涓�?,
+      latitude: 30.7384,
+      longitude: 104.1517,
+      count: 200,
+      type: 'research',
+      description: '涓栫晫涓婃渶钁楀悕鐨勫ぇ鐔婄尗绻佽偛鐮旂┒鏈烘瀯锛屾嫢鏈夊叏鐞冩渶澶氱殑鍦堝吇澶х唺鐚�?,
+      established: '1987�?,
+      imageUrl: './assets/chengdu.jpg'
+    },
+    {
+      id: 4,
+      name: '鍖椾含鍔ㄧ墿�?,
+      address: '鍖椾含甯傝タ鍩庡尯瑗跨洿闂ㄥ澶ц�?37�?,
+      country: '涓�?,
+      latitude: 39.9402,
+      longitude: 116.3376,
+      count: 5,
+      type: 'captive',
+      description: '涓浗鏈€鏃╅ゲ鍏诲睍绀哄ぇ鐔婄尗鐨勫姩鐗╁洯涔嬩竴锛屾嫢鏈変笓闂ㄧ殑澶х唺鐚�?,
+      established: '1908�?,
+      imageUrl: './assets/beijing_zoo.jpg'
+    },
+    {
+      id: 5,
+      name: '缇庡浗鍥藉鍔ㄧ墿锟?,
+      address: '3001 Connecticut Ave NW, Washington, DC 20008, 缇庡�?,
+      country: '缇庡�?,
+      latitude: 38.9296,
+      longitude: -77.0497,
+      count: 3,
+      type: 'captive',
+      description: '缇庡浗鏈€鏃╅ゲ鍏诲ぇ鐔婄尗鐨勫姩鐗╁洯锛屽弬涓庝腑缇庡ぇ鐔婄尗淇濇姢鍚堜綔椤圭洰锟?,
+      established: '1889�?,
+      imageUrl: './assets/national_zoo.jpg'
+    },
+    {
+      id: 6,
+      name: '鏃ユ湰涓婇噹鍔ㄧ墿锟?,
+      address: '鏉变含閮藉彴鏉卞尯涓婇噹鍏�?-83',
+      country: '鏃ユ�?,
+      latitude: 35.7167,
+      longitude: 139.7711,
+      count: 2,
+      type: 'captive',
+      description: '鏃ユ湰鏈€鏃╁紩杩涘ぇ鐔婄尗鐨勫姩鐗╁洯锛屾槸鏃ヤ腑鍙嬪ソ鐨勯噸瑕佽薄寰侊拷?,
+      established: '1882�?,
+      imageUrl: './assets/ueno_zoo.jpg'
+    },
+    {
+      id: 7,
+      name: '娉曞浗鍗氱摝鍕掑姩鐗╁洯',
+      address: 'Avenue de la R茅publique, 41800 Beauval, 娉曞�?,
+      country: '娉曞�?,
+      latitude: 47.2486,
+      longitude: 1.3542,
+      count: 4,
+      type: 'captive',
+      description: '娆ф床鏈€鎴愬姛鐨勫ぇ鐔婄尗绻佽偛鍩哄湴涔嬩竴锛屾浘鎴愬姛绻佽偛澶氬彧澶х唺鐚辜宕斤拷?,
+      established: '1980�?,
+      imageUrl: './assets/beauval_zoo.jpg'
+    },
+    {
+      id: 8,
+      name: '鐢樿們鐧芥按姹熷浗瀹剁骇鑷劧淇濇姢锟?,
+      address: '鐢樿們鐪侀檱鍗楀競鏂囧幙',
+      country: '涓�?,
+      latitude: 32.9041,
+      longitude: 104.8714,
+      count: 110,
+      type: 'wild',
+      description: '鐢樿們鐪佹渶澶х殑澶х唺鐚爾鎭湴锛屾槸澶х唺鐚垎甯冩渶鍖楃殑鍖哄煙锟?,
+      established: '1963�?,
+      imageUrl: './assets/baishuijiang.jpg'
+    },
+    {
+      id: 9,
+      name: '鐖变竵鍫″姩鐗╁�?,
+      address: '134 Corstorphine Rd, Edinburgh EH12 6TS, 鑻卞�?,
+      country: '鑻卞�?,
+      latitude: 55.9421,
+      longitude: -3.2687,
+      count: 2,
+      type: 'captive',
+      description: '鑻卞浗鍞竴楗插吇澶х唺鐚殑鍔ㄧ墿鍥紝鍙備笌涓嫳澶х唺鐚繚鎶ゅ悎浣滈」鐩拷?,
+      established: '1913�?,
+      imageUrl: './assets/edinburgh_zoo.jpg'
+    },
+    {
+      id: 10,
+      name: '浜氱壒鍏板ぇ鍔ㄧ墿锟?,
+      address: '800 Cherokee Ave SE, Atlanta, GA 30315, 缇庡�?,
+      country: '缇庡�?,
+      latitude: 33.7341,
+      longitude: -84.3741,
+      count: 2,
+      type: 'captive',
+      description: '缇庡浗鏈€鎴愬姛鐨勫ぇ鐔婄尗绻佽偛鍩哄湴涔嬩竴锛屽凡鎴愬姛绻佽偛澶氬彧澶х唺鐚辜宕斤�?,
+      established: '1889�?,
+      imageUrl: './assets/atlanta_zoo.jpg'
+    },
+    {
+      id: 11,
+      name: '澶氫鸡澶氬姩鐗╁�?,
+      address: '2000 Meadowvale Rd, Toronto, ON M1B 5K7, 鍔犳嬁锟?,
+      country: '鍔犳嬁锟?,
+      latitude: 43.8209,
+      longitude: -79.1827,
+      count: 2,
+      type: 'captive',
+      description: '鍔犳嬁澶у敮涓€楗插吇澶х唺鐚殑鍔ㄧ墿鍥紝鍙備笌涓姞澶х唺鐚繚鎶ゅ悎浣滈」鐩拷?,
+      established: '1974�?,
+      imageUrl: './assets/toronto_zoo.jpg'
+    },
+    {
+      id: 12,
+      name: '椹潵瑗夸簹鍥藉鍔ㄧ墿�?,
+      address: 'Hulu Langat, Selangor, 椹潵瑗夸簹',
+      country: '椹潵瑗夸簹',
+      latitude: 3.2097,
+      longitude: 101.7414,
+      count: 2,
+      type: 'captive',
+      description: '涓滃崡浜氬湴鍖洪ゲ鍏诲ぇ鐔婄尗鐨勪富瑕佸姩鐗╁洯锛屽弬涓庝腑椹ぇ鐔婄尗淇濇姢鍚堜綔椤圭洰锟?,
+      established: '1963�?,
+      imageUrl: './assets/malaysia_zoo.jpg'
+    }
+  ];
+}
+
+// 鍒囨崲鏍囪鏄剧ず妯″紡
+function toggleMarkerDisplay(locations) {
+  // 鑾峰彇褰撳墠妯″紡骞跺垏锟?  const currentMode = localStorage.getItem('useSimpleMarkers') === 'true';
+  localStorage.setItem('useSimpleMarkers', (!currentMode).toString());
+  
+  // 鏇存柊鏄剧ず妯″紡鎸夐挳鏂囨湰鍜屾牱锟?  const displayModeBtn = document.getElementById('display-mode-btn');
+  if (displayModeBtn) {
+    displayModeBtn.textContent = !currentMode ? '浣跨敤鍥炬爣鏄剧�? : '浣跨敤鍦嗙偣鏄剧�?;
+    
+    // 娣诲姞鎸夐挳鍔ㄧ敾鏁堟灉
+    displayModeBtn.classList.add('active');
+    setTimeout(() => {
+      displayModeBtn.classList.remove('active');
+    }, 500);
+  }
+  
+  // 鑾峰彇鍦板浘瀹炰�?
+  const mapContainer = document.getElementById('panda-map-container');
+  if (!mapContainer) {
+    console.error('鎵句笉鍒板湴鍥惧锟?);
+    return;
+  }
+  
+  // 纭繚Leaflet宸插姞锟?  if (typeof L === 'undefined') {
+    console.error('Leaflet鏈姞锟?);
+    return;
+  }
+  
+  let map = null;
+  // 鏌ユ壘鎵€鏈夊湴鍥惧疄锟?  for (const key in L) {
+    if (L[key] && L[key]._container === mapContainer) {
+      map = L[key];
+      break;
+    }
+  }
+  
+  if (!map) {
+    console.error('鎵句笉鍒板湴鍥惧疄锟?);
+    return;
+  }
+  
+  console.log('鎵惧埌鍦板浘瀹炰緥锛屽噯澶囬噸鏂板姞杞芥爣锟?);
+  
+  // 鑾峰彇褰撳墠绛涢€夋潯锟?  const filterSelect = document.getElementById('map-filter-select');
+  const currentFilter = filterSelect ? filterSelect.value : 'all';
+  
+  // 鏍规嵁绛涢€夋潯浠惰繃婊や綅�?  let filteredLocations = [];
+  
+  switch (currentFilter) {
+    case 'china':
+      filteredLocations = locations.filter(loc => loc.country === '涓�?);
+      break;
+    case 'international':
+      filteredLocations = locations.filter(loc => loc.country !== '涓�?);
+      break;
+    case 'wild':
+      filteredLocations = locations.filter(loc => {
+        return (loc.types && loc.types.includes('wild')) || loc.type === 'wild';
+      });
+      break;
+    case 'captive':
+      filteredLocations = locations.filter(loc => {
+        return (loc.types && loc.types.includes('captive')) || loc.type === 'captive';
+      });
+      break;
+    case 'research':
+      filteredLocations = locations.filter(loc => {
+        return (loc.types && loc.types.includes('research')) || loc.type === 'research';
+      });
+      break;
+    default:
+      filteredLocations = locations;
+  }
+  
+  // 閲嶆柊鍔犺浇鏍囪�?
+  addPandaMarkersLeaflet(map, filteredLocations);
+}
+
+// 鍔犺浇杞欢璁剧疆椤甸潰
+function loadAppSettings() {
+  const contentContainer = document.getElementById('content-container');
+  
+  // 鏄剧ず鍔犺浇鐘讹�?  contentContainer.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p>姝ｅ湪鍔犺浇杞欢璁剧疆...</p></div>';
+  
+  try {
+    // 鑾峰彇褰撳墠涓婚璁剧疆
+    const currentTheme = localStorage.getItem('appTheme') || 'light';
+    const currentBackground = localStorage.getItem('appBackground') || 'default';
+    const currentFontSize = localStorage.getItem('appFontSize') || 'medium';
+    const autoRefreshEnabled = localStorage.getItem('autoRefreshEnabled') === 'true';
+    const refreshInterval = localStorage.getItem('refreshInterval') || '60';
+    
+    // 鏋勫缓璁剧疆椤甸潰HTML
+    let settingsHtml = `
+      <div class="page-container settings-page">
+        <h2>杞欢璁剧疆</h2>
+        
+        <div class="settings-section">
+          <h3>澶栬璁剧疆</h3>
+          <div class="settings-group">
+            <div class="settings-item">
+              <label for="theme-select">涓婚棰滆壊�?/label>
+              <select id="theme-select" class="settings-select">
+                <option value="light" ${currentTheme === 'light' ? 'selected' : ''}>娴呰壊涓婚</option>
+                <option value="dark" ${currentTheme === 'dark' ? 'selected' : ''}>娣辫壊涓婚</option>
+                <option value="panda" ${currentTheme === 'panda' ? 'selected' : ''}>鐔婄尗涓婚</option>
+                <option value="forest" ${currentTheme === 'forest' ? 'selected' : ''}>妫灄涓婚</option>
+                <option value="bamboo" ${currentTheme === 'bamboo' ? 'selected' : ''}>绔规灄涓婚</option>
+              </select>
+            </div>
+            
+            <div class="settings-item">
+              <label for="background-select">鑳屾櫙鏍峰紡�?/label>
+              <select id="background-select" class="settings-select">
+                <option value="default" ${currentBackground === 'default' ? 'selected' : ''}>榛樿鑳屾櫙</option>
+                <option value="gradient" ${currentBackground === 'gradient' ? 'selected' : ''}>娓愬彉鑳屾櫙</option>
+                <option value="pattern" ${currentBackground === 'pattern' ? 'selected' : ''}>绔瑰彾鍥炬</option>
+                <option value="image1" ${currentBackground === 'image1' ? 'selected' : ''}>鐔婄尗鑳屾櫙1</option>
+                <option value="image2" ${currentBackground === 'image2' ? 'selected' : ''}>鐔婄尗鑳屾櫙2</option>
+              </select>
+            </div>
+            
+            <div class="settings-item">
+              <label for="font-size-select">瀛椾綋澶у皬锟?/label>
+              <select id="font-size-select" class="settings-select">
+                <option value="small" ${currentFontSize === 'small' ? 'selected' : ''}>灏忓彿瀛椾�?/option>
+                <option value="medium" ${currentFontSize === 'medium' ? 'selected' : ''}>涓彿瀛椾�?/option>
+                <option value="large" ${currentFontSize === 'large' ? 'selected' : ''}>澶у彿瀛椾�?/option>
+                <option value="xlarge" ${currentFontSize === 'xlarge' ? 'selected' : ''}>瓒呭ぇ瀛椾�?/option>
+              </select>
+            </div>
+            
+            <div class="settings-item theme-preview">
+              <label>涓婚棰勮�?/label>
+              <div id="theme-preview-container" class="theme-preview-container ${currentTheme}">
+                <div class="preview-header">
+                  <div class="preview-logo">宸濆皬鐔婄尗</div>
+                  <div class="preview-nav">
+                    <span>鐔婄尗鍦板浘</span>
+                    <span>鐔婄尗鍔拷?/span>
+                    <span>鐔婄尗鐭ヨ瘑</span>
+                  </div>
+                </div>
+                <div class="preview-content">
+                  <div class="preview-card">
+                    <h4>澶х唺鐚柊锟?/h4>
+                    <p>杩欐槸涓€鏉＄ず渚嬫柊闂诲唴瀹癸紝灞曠ず褰撳墠涓婚鐨勬樉绀烘晥鏋滐�?/p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="settings-section">
+          <h3>鏁版嵁鏇存柊璁剧�?/h3>
+          <div class="settings-group">
+            <div class="settings-item">
+              <label class="checkbox-label">
+                <input type="checkbox" id="auto-refresh-checkbox" ${autoRefreshEnabled ? 'checked' : ''}>
+                <span>鍚敤鑷姩鏇存柊鏁版嵁</span>
+              </label>
+            </div>
+            
+            <div class="settings-item">
+              <label for="refresh-interval">鏇存柊闂撮殧(�?�?/label>
+              <input type="number" id="refresh-interval" min="30" max="600" value="${refreshInterval}">
+            </div>
+          </div>
+        </div>
+        
+        <div class="settings-section">
+          <h3>搴旂敤淇℃伅</h3>
+          <div class="settings-group">
+            <div class="settings-item">
+              <label>搴旂敤鐗堟湰�?/label>
+              <span>1.0.0</span>
+            </div>
+            <div class="settings-item">
+              <label>鏁版嵁鏉ユ簮�?/label>
+              <span>閫氫箟鍗冮棶API</span>
+            </div>
+            <div class="settings-item">
+              <button id="reset-settings" class="settings-button danger">鎭㈠榛樿璁剧�?/button>
+              <button id="save-settings" class="settings-button primary">淇濆瓨璁剧疆</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // 鏇存柊鍐呭
+    contentContainer.innerHTML = settingsHtml;
+    
+    // 娣诲姞璁剧疆鍙樻洿浜嬩欢
+    const themeSelect = document.getElementById('theme-select');
+    const backgroundSelect = document.getElementById('background-select');
+    const fontSizeSelect = document.getElementById('font-size-select');
+    const themePreviewContainer = document.getElementById('theme-preview-container');
+    
+    // 涓婚棰勮鏁堟�?
+    if (themeSelect && themePreviewContainer) {
+      themeSelect.addEventListener('change', function() {
+        // 鏇存柊棰勮瀹瑰櫒鐨勭被
+        themePreviewContainer.className = 'theme-preview-container ' + this.value;
+      });
+    }
+    
+    // 淇濆瓨璁剧疆鎸夐�?
+    const saveButton = document.getElementById('save-settings');
+    if (saveButton) {
+      saveButton.addEventListener('click', function() {
+        // 鑾峰彇鎵€鏈夎�?        const newTheme = themeSelect.value;
+        const newBackground = backgroundSelect.value;
+        const newFontSize = fontSizeSelect.value;
+        const newAutoRefresh = document.getElementById('auto-refresh-checkbox').checked;
+        const newRefreshInterval = document.getElementById('refresh-interval').value;
+        
+        // 淇濆瓨鍒發ocalStorage
+        localStorage.setItem('appTheme', newTheme);
+        localStorage.setItem('appBackground', newBackground);
+        localStorage.setItem('appFontSize', newFontSize);
+        localStorage.setItem('autoRefreshEnabled', newAutoRefresh);
+        localStorage.setItem('refreshInterval', newRefreshInterval);
+        
+        // 搴旂敤鏂拌�?        applyAppSettings();
+        
+        // 鏄剧ず鑷畾涔夋彁绀烘
+        showCustomAlert({
+          title: '璁剧疆宸蹭繚�?,
+          message: '鎮ㄧ殑璁剧疆宸叉垚鍔熶繚瀛樺苟搴旂敤�?,
+          confirmText: '濂界�?
+        });
+      });
+    }
+    
+    // 閲嶇疆璁剧疆鎸夐�?
+    const resetButton = document.getElementById('reset-settings');
+    if (resetButton) {
+      resetButton.addEventListener('click', function() {
+        // 浣跨敤鑷畾涔夌‘璁ゆ
+        showCustomAlert({
+          title: '纭閲嶇疆',
+          message: '纭畾瑕佹仮澶嶆墍鏈夐粯璁よ缃悧�?,
+          confirmText: '纭�?,
+          cancelText: '鍙栨�?,
+          showCancel: true,
+          onConfirm: () => {
+            // 娓呴櫎鎵€鏈夎�?            localStorage.removeItem('appTheme');
+            localStorage.removeItem('appBackground');
+            localStorage.removeItem('appFontSize');
+            localStorage.removeItem('autoRefreshEnabled');
+            localStorage.removeItem('refreshInterval');
+            
+            // 閲嶆柊鍔犺浇璁剧疆椤甸潰
+            loadAppSettings();
+            
+            // 搴旂敤榛樿璁剧�?
+            applyAppSettings();
+          }
+        });
+      });
+    }
+  } catch (error) {
+    console.error('鍔犺浇杞欢璁剧疆澶辫触:', error);
+    contentContainer.innerHTML = '<div class="error-container"><p>鍔犺浇杞欢璁剧疆澶辫触锛岃绋嶅悗鍐嶈瘯锟?/p></div>';
+  }
+}
+
+// 搴旂敤杞欢璁剧�?
+function applyAppSettings() {
+  // 鑾峰彇褰撳墠璁剧�?
+  const currentTheme = localStorage.getItem('appTheme') || 'light';
+  const currentBackground = localStorage.getItem('appBackground') || 'default';
+  const currentFontSize = localStorage.getItem('appFontSize') || 'medium';
+  const autoRefreshEnabled = localStorage.getItem('autoRefreshEnabled') === 'true';
+  const refreshInterval = parseInt(localStorage.getItem('refreshInterval') || '60') * 1000;
+  
+  // 搴旂敤涓婚 - 鍏堟竻闄ゆ墍鏈夌浉鍏崇殑�?  document.body.classList.remove(
+    'theme-light', 'theme-dark', 'theme-panda', 'theme-forest', 'theme-bamboo',
+    'bg-default', 'bg-gradient', 'bg-pattern', 'bg-image1', 'bg-image2',
+    'font-small', 'font-medium', 'font-large', 'font-xlarge'
+  );
+  
+  // 搴旂敤涓婚鍜岃儗锟?  document.body.classList.add(`theme-${currentTheme}`);
+  document.body.classList.add(`bg-${currentBackground}`);
+  document.body.classList.add(`font-${currentFontSize}`);
+  
+  // 鐩存帴鍦ㄦ枃妗ｆ牴鍏冪礌涓婅缃瓧浣撳ぇ灏廋SS鍙橀�?
+  const fontSizeValue = {
+    'small': '14px',
+    'medium': '16px',
+    'large': '18px',
+    'xlarge': '20px'
+  }[currentFontSize] || '16px';
+  
+  document.documentElement.style.setProperty('--font-size-base', fontSizeValue);
+  
+  // 搴旂敤鑷姩鍒锋柊璁剧疆
+  if (typeof autoRefresh !== 'undefined') {
+    if (autoRefreshEnabled) {
+      // 鑾峰彇褰撳墠椤甸�?
+      const activeNavItem = document.querySelector('.main-nav li.active');
+      const currentPage = activeNavItem ? activeNavItem.getAttribute('data-page') : null;
+      
+      // 鏍规嵁褰撳墠椤甸潰閫夋嫨鍒锋柊鍑芥暟
+      if (currentPage === 'news') {
+        autoRefresh.startAutoRefresh(loadPandaNews, refreshInterval);
+      } else if (currentPage === 'live') {
+        autoRefresh.startAutoRefresh(refreshLiveData, refreshInterval);
+      }
+    } else {
+      autoRefresh.stopAutoRefresh();
+    }
+  }
+  
+  console.log('搴旂敤璁剧疆宸叉洿锟?', {
+    涓婚�? currentTheme,
+    鑳屾�? currentBackground,
+    瀛椾綋澶у�? currentFontSize,
+    鑷姩鍒锋柊: autoRefreshEnabled,
+    鍒锋柊闂撮殧: refreshInterval + 'ms'
+  });
+}
+
+// 鍦ㄦ枃妗ｅ姞杞藉畬鎴愬悗搴旂敤璁剧疆
+document.addEventListener('DOMContentLoaded', () => {
+  // 鍦ㄥ垱寤哄簲鐢ㄥ竷灞€鍚庡簲鐢ㄨ锟?  setTimeout(applyAppSettings, 100);
+});
+
+// 鍒涘缓鑷畾涔夋彁绀烘
+function showCustomAlert(options) {
+  // 榛樿閫夐�?
+  const defaults = {
+    title: '鎻愮�?,
+    message: '',
+    confirmText: '纭�?,
+    cancelText: '鍙栨�?,
+    showCancel: false,
+    onConfirm: () => {},
+    onCancel: () => {},
+    theme: document.body.classList.contains('theme-dark') ? 'dark' : 'light'
+  };
+  
+  // 鍚堝苟閫夐�?
+  const settings = { ...defaults, ...options };
+  
+  // 鍒涘缓閬僵�?  const overlay = document.createElement('div');
+  overlay.className = 'custom-alert-overlay';
+  document.body.appendChild(overlay);
+  
+  // 鍒涘缓鎻愮ず�?  const alertBox = document.createElement('div');
+  alertBox.className = 'custom-alert-box';
+  
+  // 鍒涘缓澶撮儴
+  const header = document.createElement('div');
+  header.className = 'custom-alert-header';
+  header.innerHTML = `
+    <span>${settings.title}</span>
+    <button class="close-btn">&times;</button>
+  `;
+  
+  // 鍒涘缓鍐呭
+  const content = document.createElement('div');
+  content.className = 'custom-alert-content';
+  content.innerHTML = settings.message;
+  
+  // 鍒涘缓搴曢儴鎸夐�?
+  const footer = document.createElement('div');
+  footer.className = 'custom-alert-footer';
+  
+  let confirmButton = document.createElement('button');
+  confirmButton.className = 'custom-alert-btn primary';
+  confirmButton.textContent = settings.confirmText;
+  
+  let cancelButton;
+  if (settings.showCancel) {
+    cancelButton = document.createElement('button');
+    cancelButton.className = 'custom-alert-btn default';
+    cancelButton.textContent = settings.cancelText;
+    footer.appendChild(cancelButton);
+  }
+  
+  footer.appendChild(confirmButton);
+  
+  // 缁勮鎻愮ず�?  alertBox.appendChild(header);
+  alertBox.appendChild(content);
+  alertBox.appendChild(footer);
+  overlay.appendChild(alertBox);
+  
+  // 娣诲姞鍔ㄧ敾�?  setTimeout(() => {
+    overlay.classList.add('show');
+  }, 10);
+  
+  // 鍏抽棴鎻愮ず妗嗗嚱锟?  const closeAlert = () => {
+    overlay.classList.remove('show');
+    setTimeout(() => {
+      document.body.removeChild(overlay);
+    }, 300);
+  };
+  
+  // 缁戝畾浜嬩欢
+  header.querySelector('.close-btn').addEventListener('click', () => {
+    closeAlert();
+    if (settings.onCancel) settings.onCancel();
+  });
+  
+  confirmButton.addEventListener('click', () => {
+    closeAlert();
+    if (settings.onConfirm) settings.onConfirm();
+  });
+  
+  if (settings.showCancel) {
+    cancelButton.addEventListener('click', () => {
+      closeAlert();
+      if (settings.onCancel) settings.onCancel();
+    });
+  }
+  
+  // 鐐瑰嚮閬僵灞傚叧锟?  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      closeAlert();
+      if (settings.onCancel) settings.onCancel();
+    }
+  });
+  
+  // ESC閿叧锟?  const escKeyHandler = (e) => {
+    if (e.key === 'Escape') {
+      closeAlert();
+      if (settings.onCancel) settings.onCancel();
+      document.removeEventListener('keydown', escKeyHandler);
+    }
+  };
+  document.addEventListener('keydown', escKeyHandler);
+  
+  return {
+    close: closeAlert
+  };
+}
+
+

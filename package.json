@@ -1,0 +1,46 @@
+{
+  "name": "chuanpanda",
+  "productName": "川小熊猫",
+  "version": "1.0.0",
+  "description": "全球熊猫动态查看器",
+  "main": "main.js",
+  "bin": "app.js",
+  "scripts": {
+    "start": "electron .",
+    "start:node": "node app.js",
+    "build": "pkg . --targets node18-win-x64 --output 川小熊猫.exe",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "熊猫",
+    "动物",
+    "监控",
+    "知识"
+  ],
+  "author": "",
+  "license": "ISC",
+  "pkg": {
+    "assets": [
+      "index.html",
+      "src/**/*",
+      "42.png",
+      "42-ico.ico"
+    ],
+    "outputPath": "dist"
+  },
+  "build": {
+    "appId": "com.chuanpanda.app",
+    "productName": "川小熊猫",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "42-ico.ico"
+    }
+  },
+  "devDependencies": {
+    "electron": "^36.4.0",
+    "electron-is-dev": "^3.0.1"
+  }
+}

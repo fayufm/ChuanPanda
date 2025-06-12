@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';">
+  <title>川小熊猫 - 全球熊猫动态查看器</title>
+  <link rel="icon" href="42-ico.ico" type="image/x-icon">
+  <link rel="stylesheet" href="./src/styles.css">
+  <style>
+    /* 基础样式 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: "Microsoft YaHei", "SimHei", sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f5f5f5;
+      transition: all 0.3s ease;
+      /* 确保整个body不可拖拽 */
+      -webkit-app-region: no-drag;
+    }
+    
+    /* 主题相关样式 */
+    /* 浅色主题 (默认) */
+    body.theme-light {
+      --primary-color: #4ecdc4;
+      --secondary-color: #ff6b6b;
+      --text-color: #333;
+      --bg-color: #f5f5f5;
+      --card-bg: #fff;
+      --header-bg: #fff;
+      --border-color: #ddd;
+      --hover-color: #e9e9e9;
+      --accent-color: #4ecdc4;
+    }
+    
+    /* 深色主题 */
+    body.theme-dark {
+      --primary-color: #00a896;
+      --secondary-color: #ff6b6b;
+      --text-color: #f0f0f0;
+      --bg-color: #1a1a1a;
+      --card-bg: #2d2d2d;
+      --header-bg: #333;
+      --border-color: #444;
+      --hover-color: #3a3a3a;
+      --accent-color: #00a896;
+      
+      color: var(--text-color);
+      background-color: var(--bg-color);
+    }
+    
+    /* 熊猫主题 */
+    body.theme-panda {
+      --primary-color: #25a55f;
+      --secondary-color: #ff8c42;
+      --text-color: #222;
+      --bg-color: #f7f7f7;
+      --card-bg: #fff;
+      --header-bg: #333;
+      --border-color: #ddd;
+      --hover-color: #e9e9e9;
+      --accent-color: #25a55f;
+    }
+    
+    /* 森林主题 */
+    body.theme-forest {
+      --primary-color: #2d6a4f;
+      --secondary-color: #fc9e4f;
+      --text-color: #f0f0f0;
+      --bg-color: #1b4332;
+      --card-bg: #2d6a4f;
+      --header-bg: #081c15;
+      --border-color: #52b788;
+      --hover-color: #40916c;
+      --accent-color: #95d5b2;
+      
+      color: var(--text-color);
+      background-color: var(--bg-color);
+    }
+    
+    /* 竹林主题 */
+    body.theme-bamboo {
+      --primary-color: #5c8001;
+      --secondary-color: #fb8b24;
+      --text-color: #222;
+      --bg-color: #f8f9fa;
+      --card-bg: #fff;
+      --header-bg: #606c38;
+      --border-color: #dda15e;
+      --hover-color: #e9e9e9;
+      --accent-color: #bc6c25;
+    }
+    
+    /* 背景样式 */
+    /* 默认背景 */
+    body.bg-default {
+      background-color: var(--bg-color);
+    }
+    
+    /* 渐变背景 */
+    body.bg-gradient {
+      background: linear-gradient(135deg, var(--bg-color), var(--primary-color) 70%, var(--bg-color));
+      background-attachment: fixed;
+    }
+    
+    /* 竹叶图案 */
+    body.bg-pattern {
+      background-color: var(--bg-color);
+      background-image: url('./assets/bamboo-pattern.png');
+      background-repeat: repeat;
+      background-size: 200px;
+      background-attachment: fixed;
+      background-blend-mode: overlay;
+    }
+    
+    /* 熊猫背景1 */
+    body.bg-image1 {
+      background-image: url('./assets/panda_bg1.jpg');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+    
+    /* 熊猫背景2 */
+    body.bg-image2 {
+      background-image: url('./assets/panda_bg2.jpg');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+    
+    /* 字体大小 */
+    body.font-small {
+      font-size: 14px;
+    }
+    
+    body.font-medium {
+      font-size: 16px;
+    }
+    
+    body.font-large {
+      font-size: 18px;
+    }
+    
+    body.font-xlarge {
+      font-size: 20px;
+    }
+    
+    /* 应用容器 */
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    /* 应用头部 */
+    .app-header {
+      background-color: var(--header-bg);
+      color: var(--primary-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* 其他现有样式保持不变... */
+    
+    /* 软件设置页面样式 */
+    .settings-page {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .settings-section {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .settings-section h3 {
+      color: var(--primary-color);
+      margin-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+    }
+    
+    .settings-group {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+    }
+    
+    @media (min-width: 768px) {
+      .settings-group {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    
+    .settings-item {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 15px;
+    }
+    
+    .settings-item label {
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: var(--text-color);
+    }
+    
+    .settings-select, 
+    .settings-item input[type="number"] {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-size: 16px;
+    }
+    
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+    
+    .checkbox-label input {
+      margin-right: 8px;
+    }
+    
+    .settings-button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .settings-button.primary {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    .settings-button.danger {
+      background-color: var(--secondary-color);
+      color: white;
+    }
+    
+    .settings-button:hover {
+      opacity: 0.9;
+    }
+    
+    /* 主题预览 */
+    .theme-preview {
+      grid-column: span 2;
+    }
+    
+    .theme-preview-container {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    
+    .preview-header {
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .preview-nav {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .preview-content {
+      padding: 15px;
+    }
+    
+    .preview-card {
+      padding: 15px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* 预览容器主题 */
+    .theme-preview-container.light {
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    
+    .theme-preview-container.light .preview-header {
+      background-color: #fff;
+      color: #4ecdc4;
+    }
+    
+    .theme-preview-container.light .preview-card {
+      background-color: #fff;
+    }
+    
+    .theme-preview-container.dark {
+      background-color: #1a1a1a;
+      color: #f0f0f0;
+    }
+    
+    .theme-preview-container.dark .preview-header {
+      background-color: #333;
+      color: #00a896;
+    }
+    
+    .theme-preview-container.dark .preview-card {
+      background-color: #2d2d2d;
+    }
+    
+    .theme-preview-container.panda {
+      background-color: #f7f7f7;
+      color: #222;
+    }
+    
+    .theme-preview-container.panda .preview-header {
+      background-color: #333;
+      color: #25a55f;
+    }
+    
+    .theme-preview-container.panda .preview-card {
+      background-color: #fff;
+    }
+    
+    .theme-preview-container.forest {
+      background-color: #1b4332;
+      color: #f0f0f0;
+    }
+    
+    .theme-preview-container.forest .preview-header {
+      background-color: #081c15;
+      color: #95d5b2;
+    }
+    
+    .theme-preview-container.forest .preview-card {
+      background-color: #2d6a4f;
+    }
+    
+    .theme-preview-container.bamboo {
+      background-color: #f8f9fa;
+      color: #222;
+    }
+    
+    .theme-preview-container.bamboo .preview-header {
+      background-color: #606c38;
+      color: #dda15e;
+    }
+    
+    .theme-preview-container.bamboo .preview-card {
+      background-color: #fff;
+      border: 1px solid #dda15e;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    // 由于浏览器环境不支持require，我们需要在这里添加一个模拟的API服务
+    window.api = {
+      getLatestPandaNews: async function() {
+        return [
+          {
+            title: "成都大熊猫繁育研究基地迎来双胞胎熊猫宝宝",
+            date: "2025年6月5日",
+            description: "成都大熊猫繁育研究基地的大熊猫\"星星\"成功产下一对双胞胎熊猫宝宝，目前母子平安。这对双胞胎是今年全球首对出生的大熊猫双胞胎。",
+            source: "成都大熊猫繁育研究基地官网",
+            image: "./assets/panda1.jpg",
+            url: "https://www.panda.org.cn/"
+          },
+          {
+            title: "中法合作大熊猫保护项目取得重大进展",
+            date: "2025年5月28日",
+            description: "中法科学家团队在大熊猫基因研究方面取得重大突破，有望帮助提高大熊猫的繁殖成功率和幼崽存活率。",
+            source: "中国科学院动物研究所",
+            image: "./assets/panda2.jpg",
+            url: "http://www.ioz.cas.cn/kxcbb/kpkxjd/201902/t20190220_5242296.html"
+          },
+          {
+            title: "四川卧龙保护区野生大熊猫数量创新高",
+            date: "2025年5月15日",
+            description: "最新野外调查显示，四川卧龙自然保护区的野生大熊猫数量达到197只，较上次普查增加了23只，创历史新高。",
+            source: "国家林业和草原局",
+            image: "./assets/panda3.jpg",
+            url: "http://www.forestry.gov.cn/dxm.html"
+          }
+        ];
+      },
+      getPandaKnowledge: async function() {
+        return {
+          basicInfo: {
+            title: "大熊猫基本信息",
+            image: "./assets/panda_logo1.png",
+            content: [
+              "大熊猫（学名：Ailuropoda melanoleuca）是食肉目、熊科、大熊猫亚科、大熊猫属的唯一现存物种，体色为黑白两色，被誉为\"中国国宝\"。",
+              "大熊猫是中国特有物种，主要分布于四川、陕西和甘肃的山区，栖息于海拔2000-3500米的森林中。",
+              "大熊猫属于食肉目，但主要以竹子为食，竹子占其食物的99%。大熊猫每天要花10-16小时进食，消耗大约12-38公斤的竹子。"
+            ]
+          },
+          habits: {
+            title: "生活习性",
+            items: [
+              {
+                subtitle: "饮食",
+                content: "大熊猫是杂食性动物，但主要以竹子为食。它们喜食箭竹、拐棍竹等20多种竹类，也会食用野果、草类、昆虫等。"
+              },
+              {
+                subtitle: "活动",
+                content: "大熊猫性格温顺，独居生活，喜欢安静，活动缓慢，大部分时间用于觅食和休息。"
+              },
+              {
+                subtitle: "繁殖",
+                content: "大熊猫性成熟年龄为5.5-6.5岁，每年3-5月为发情期，妊娠期为83-200天，通常产1-2仔，幼仔出生时重约150克。"
+              },
+              {
+                subtitle: "寿命",
+                content: "野生大熊猫平均寿命约为20年，人工饲养的大熊猫可以活到25-30岁。"
+              }
+            ]
+          },
+          conservation: {
+            title: "保护现状",
+            content: [
+              "大熊猫曾被列为濒危物种，经过多年保护，野外种群数量已从上世纪80年代的约1100只增长到目前的近1900只。",
+              "2021年10月，中国大熊猫国家公园正式成立，总面积为27134平方公里，栖息着全国总量80%以上的野生大熊猫。",
+              "2016年，国际自然保护联盟(IUCN)将大熊猫的受威胁等级从\"濒危\"降级为\"易危\"，这表明大熊猫保护工作已取得显著成效。"
+            ]
+          }
+        };
+      },
+      getPandaLiveInfo: async function() {
+        return [
+          {
+            name: "成都大熊猫繁育研究基地直播",
+            description: "观看成都基地大熊猫的日常生活，包括进食、玩耍和休息等活动。",
+            image: "./assets/panda_logo2.png",
+            url: "https://live.ipanda.com/xmwl/index.shtml"
+          },
+          {
+            name: "卧龙自然保护区直播",
+            description: "探索卧龙自然保护区内野生大熊猫的栖息环境和生活状态。",
+            image: "./assets/panda_logo3.jpg",
+            url: "https://live.ipanda.com/xmwl/index.shtml"
+          },
+          {
+            name: "秦岭大熊猫栖息地直播",
+            description: "了解秦岭山脉中大熊猫的生活环境和保护工作。",
+            image: "./assets/panda_logo4.png",
+            url: "https://live.ipanda.com/xmwl/index.shtml"
+          }
+        ];
+      },
+      openExternalLink: function(url) {
+        if (url) {
+          window.open(url, '_blank');
+          return true;
+        }
+        return false;
+      }
+    };
+  </script>
+  <script src="./src/renderer.js"></script>
+</body>
+</html> 
