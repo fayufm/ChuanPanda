@@ -12,6 +12,16 @@ contextBridge.exposeInMainWorld('pandaAPI', {
     }
   },
   
+  // 获取熊猫新闻（轻量版）
+  getLatestPandaNewsLite: async () => {
+    try {
+      return await ipcRenderer.invoke('get-panda-news-lite');
+    } catch (error) {
+      console.error('获取轻量版熊猫新闻失败:', error);
+      return null;
+    }
+  },
+  
   // 获取熊猫知识
   getPandaKnowledge: async () => {
     try {

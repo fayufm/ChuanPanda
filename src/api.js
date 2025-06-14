@@ -14,8 +14,14 @@ console.log('API服务初始化成功');
 const LOGO_CACHE_DIR = './assets/logos';
 // 地图缓存目录
 const MAPS_CACHE_DIR = './assets/maps';
+// 新闻数据缓存目录
+const NEWS_CACHE_DIR = './assets/cache';
+// 新闻缓存文件路径
+const NEWS_CACHE_FILE = path.join(NEWS_CACHE_DIR, 'news_cache.json');
+// 新闻缓存过期时间（毫秒）- 设置为10分钟
+const NEWS_CACHE_EXPIRY = 10 * 60 * 1000;
 
-// 确保logo缓存目录存在
+// 确保缓存目录存在
 try {
   if (!fs.existsSync(LOGO_CACHE_DIR)) {
     fs.mkdirSync(LOGO_CACHE_DIR, { recursive: true });
@@ -24,6 +30,10 @@ try {
   if (!fs.existsSync(MAPS_CACHE_DIR)) {
     fs.mkdirSync(MAPS_CACHE_DIR, { recursive: true });
     console.log('创建地图缓存目录:', MAPS_CACHE_DIR);
+  }
+  if (!fs.existsSync(NEWS_CACHE_DIR)) {
+    fs.mkdirSync(NEWS_CACHE_DIR, { recursive: true });
+    console.log('创建新闻缓存目录:', NEWS_CACHE_DIR);
   }
 } catch (error) {
   console.error('创建缓存目录失败:', error);
@@ -151,7 +161,8 @@ function formatDefaultNews() {
       description: "成都大熊猫繁育研究基地的大熊猫\"星星\"成功产下一对双胞胎熊猫宝宝，目前母子平安。这对双胞胎是今年全球首对出生的大熊猫双胞胎。",
       source: "成都大熊猫繁育研究基地官网",
       image: "./assets/panda1.jpg",
-      url: "https://www.panda.org.cn/"
+      url: "https://www.panda.org.cn/",
+      sourceLogo: "./assets/panda_logo1.png"
     },
     {
       title: "中法合作大熊猫保护项目取得重大进展",
@@ -159,7 +170,8 @@ function formatDefaultNews() {
       description: "中法科学家团队在大熊猫基因研究方面取得重大突破，有望帮助提高大熊猫的繁殖成功率和幼崽存活率。",
       source: "中国科学院动物研究所",
       image: "./assets/panda2.jpg",
-      url: "http://www.ioz.cas.cn/kxcbb/kpkxjd/201902/t20190220_5242296.html"
+      url: "http://www.ioz.cas.cn/kxcbb/kpkxjd/201902/t20190220_5242296.html",
+      sourceLogo: "./assets/panda_logo2.png"
     },
     {
       title: "四川卧龙保护区野生大熊猫数量创新高",
@@ -167,7 +179,71 @@ function formatDefaultNews() {
       description: "最新野外调查显示，四川卧龙自然保护区的野生大熊猫数量达到197只，较上次普查增加了23只，创历史新高。",
       source: "国家林业和草原局",
       image: "./assets/panda3.jpg",
-      url: "http://www.forestry.gov.cn/dxm.html"
+      url: "http://www.forestry.gov.cn/dxm.html",
+      sourceLogo: "./assets/panda_logo3.jpg"
+    },
+    {
+      title: "濒危降为易危！中国大熊猫保护成绩单令世界瞩目",
+      date: "2024年11月29日",
+      description: "我国大熊猫保护成绩单令世界瞩目——野外种群数量从上世纪80年代约1100只增长到约1900只，世界自然保护联盟将大熊猫从濒危等级下调为易危；全球大熊猫圈养种群数量达757只，种群结构持续向好。",
+      source: "央视网",
+      image: "./assets/panda1.jpg",
+      url: "https://news.cctv.com/2024/11/29/ARTIN7ede8DmJXya17vgCYto241129.shtml",
+      sourceLogo: "./assets/panda_logo4.png"
+    },
+    {
+      title: "大熊猫：全球物种保护的中国范例",
+      date: "2025年3月23日",
+      description: "中国绿色时报报道，大熊猫作为伞护物种，对整个生态系统保护和周边社区的可持续发展具有举足轻重的作用。大熊猫栖息地生态保护已进入了国家公园时代，栖息地受保护面积从139万公顷增长至258万公顷。",
+      source: "中国绿色时报",
+      image: "./assets/panda2.jpg",
+      url: "https://www.ipanda.com/2025/03/23/ARTIx6mZgJY6UbV3tvfYqDA5250323.shtml",
+      sourceLogo: "./assets/panda_logo1.png"
+    },
+    {
+      title: "外国出生的大熊猫加入中国野生种群恢复计划",
+      date: "2024年6月16日",
+      description: "在外国出生的大熊猫如美国出生的贝贝正在适应中国的新生活，它们将加入中国大熊猫繁育项目，有助于拯救这一物种免于灭绝。中国大熊猫保护研究中心首席专家张和民表示，他们的工作非常紧迫，需要用圈养大熊猫来补充野生种群。",
+      source: "Phys.org",
+      image: "./assets/panda3.jpg",
+      url: "https://phys.org/news/2024-06-foreign-born-pandas-china-efforts.html",
+      sourceLogo: "./assets/panda_logo2.png"
+    },
+    {
+      title: "中国野生大熊猫数量接近1900只",
+      date: "2024年1月25日",
+      description: "国家林业和草原局表示，中国野生大熊猫数量目前约为1900只，相比上世纪80年代的约1100只有了显著增长。2021年10月成立的大熊猫国家公园覆盖面积超过22,000平方公里，为约72%的野生大熊猫提供了重要保护。",
+      source: "中国政府网",
+      image: "./assets/panda_logo2.png",
+      url: "https://english.www.gov.cn/archive/statistics/202401/25/content_WS65b20287c6d0868f4e8e37be.html",
+      sourceLogo: "./assets/panda_logo3.jpg"
+    },
+    {
+      title: "成都大熊猫繁育研究基地新添双胞胎熊猫",
+      date: "2024年8月15日",
+      description: "成都大熊猫繁育研究基地成功繁育一对大熊猫双胞胎，为全球大熊猫保护再添喜讯。这对双胞胎目前健康状况良好，体重稳步增加。",
+      source: "成都日报",
+      image: "./assets/panda1.jpg",
+      url: "https://www.panda.org.cn/",
+      sourceLogo: "./assets/panda_logo4.png"
+    },
+    {
+      title: "中国大熊猫国家公园生态廊道建设取得新进展",
+      date: "2024年7月20日",
+      description: "中国大熊猫国家公园生态廊道建设项目已完成70%，该项目旨在连接分散的大熊猫栖息地，促进种群交流，提高大熊猫种群的遗传多样性。",
+      source: "国家林业和草原局",
+      image: "./assets/panda2.jpg",
+      url: "http://www.forestry.gov.cn/",
+      sourceLogo: "./assets/panda_logo1.png"
+    },
+    {
+      title: "大熊猫龙凤胎在美国动物园出生",
+      date: "2024年5月8日",
+      description: "美国华盛顿国家动物园宣布，旅美大熊猫美香成功产下一对龙凤胎，这是美国20年来首次迎来大熊猫双胞胎，这两只幼崽将在3-4岁时返回中国。",
+      source: "美国国家动物园",
+      image: "./assets/panda3.jpg",
+      url: "https://nationalzoo.si.edu/",
+      sourceLogo: "./assets/panda_logo2.png"
     }
   ];
 }
@@ -643,110 +719,9 @@ function formatDefaultLiveInfo() {
 }
 
 // 根据新闻来源生成logo
-async function generateSourceLogo(source) {
-  try {
-    if (!source) {
-      return './assets/panda_logo1.png';
-    }
-    
-    // 检查是否已经有缓存的logo
-    const sourceHash = crypto.createHash('md5').update(source).digest('hex');
-    const logoFileName = `${sourceHash}.png`;
-    const logoFilePath = path.join(LOGO_CACHE_DIR, logoFileName);
-    
-    // 如果缓存中已存在logo，直接返回
-    if (fs.existsSync(logoFilePath)) {
-      return `./assets/logos/${logoFileName}`;
-    }
-    
-    // 新闻来源和logo映射表
-    const knownSources = {
-      '新华社': './assets/panda_logo1.png',
-      '中国日报': './assets/panda_logo2.png',
-      '人民日报': './assets/panda_logo3.jpg',
-      '央视网': './assets/panda_logo4.png',
-      '央视': './assets/panda_logo4.png',
-      'CCTV': './assets/panda_logo4.png',
-      '科学日报': './assets/panda_logo1.png',
-      '科技日报': './assets/panda_logo2.png',
-      '中国科学院': './assets/panda_logo3.jpg',
-      '四川日报': './assets/panda_logo4.png',
-      '成都日报': './assets/panda_logo1.png',
-      '北京日报': './assets/panda_logo2.png',
-      '国家林业和草原局': './assets/panda_logo3.jpg',
-      '生态环境部': './assets/panda_logo4.png',
-      '世界自然基金会': './assets/panda_logo1.png',
-      'WWF': './assets/panda_logo1.png',
-      '美国国家动物园': './assets/panda_logo2.png',
-      '法新社': './assets/panda_logo3.jpg',
-      '路透社': './assets/panda_logo4.png',
-      '日本放送协会': './assets/panda_logo1.png',
-      'NHK': './assets/panda_logo1.png',
-      'BBC': './assets/panda_logo2.png',
-      'CNN': './assets/panda_logo3.jpg',
-      '澳大利亚广播公司': './assets/panda_logo4.png',
-      'ABC': './assets/panda_logo4.png',
-      'Phys.org': './assets/panda_logo1.png',
-      'ScienceDaily': './assets/panda_logo2.png',
-      'Nature': './assets/panda_logo3.jpg',
-      'Science': './assets/panda_logo4.png'
-    };
-    
-    // 检查是否是已知来源
-    for (const [knownSource, logoPath] of Object.entries(knownSources)) {
-      if (source.includes(knownSource)) {
-        console.log(`找到匹配的已知来源: "${knownSource}" 的logo`);
-        return logoPath;
-      }
-    }
-    
-    // 为未知来源生成logo
-    // 1. 提取首字母或首个汉字
-    let initial = '';
-    if (/[\u4e00-\u9fa5]/.test(source[0])) {
-      // 如果第一个字符是中文
-      initial = source[0];
-    } else {
-      // 如果是英文或其他字符，取首字母大写
-      initial = source[0].toUpperCase();
-    }
-    
-    // 根据来源名称生成一个颜色
-    const colors = ['#ff6b6b', '#4ecdc4', '#ffbe0b', '#7159c1', '#32CD32', '#1e90ff', '#ff8c00', '#9932cc'];
-    const colorIndex = sourceHash.charCodeAt(0) % colors.length;
-    const backgroundColor = colors[colorIndex];
-    
-    // 这里实际上应该调用图像生成API生成真正的logo
-    // 但由于API限制，我们使用已有的logo
-    const logoIndex = sourceHash.charCodeAt(0) % 4;
-    let selectedLogo = '';
-    
-    switch (logoIndex) {
-      case 0:
-        selectedLogo = './assets/panda_logo1.png';
-        break;
-      case 1:
-        selectedLogo = './assets/panda_logo2.png';
-        break;
-      case 2:
-        selectedLogo = './assets/panda_logo3.jpg';
-        break;
-      case 3:
-      default:
-        selectedLogo = './assets/panda_logo4.png';
-        break;
-    }
-    
-    console.log(`为新闻来源 "${source}" 生成logo: ${selectedLogo} (首字母/汉字: ${initial}, 颜色: ${backgroundColor})`);
-    
-    // 在实际应用中，这里应该创建一个包含首字母的彩色logo图片
-    // 但由于环境限制，我们返回预设的logo
-    
-    return selectedLogo;
-  } catch (error) {
-    console.error('生成新闻源logo失败:', error);
-    return './assets/panda_logo1.png';
-  }
+async function generateSourceLogo(source, url) {
+  // 简化函数，直接返回默认图标
+  return './assets/news_default.png';
 }
 
 // 根据新闻内容生成相关图片
@@ -943,254 +918,43 @@ function isPandaRelated(text) {
 // 获取最新熊猫新闻
 async function getLatestPandaNews() {
   try {
-    // 尝试从通义千问API获取新闻
-    const tongyiNews = await fetchPandaNewsFromTongyi();
+    // 首先尝试从缓存加载新闻数据
+    const cachedNews = loadNewsFromCache();
     
-    // 真实熊猫新闻数据作为备用
-    const realPandaNews = [
-      {
-        title: "濒危降为易危！中国大熊猫保护成绩单令世界瞩目",
-        date: "2024年11月29日",
-        description: "我国大熊猫保护成绩单令世界瞩目——野外种群数量从上世纪80年代约1100只增长到约1900只，世界自然保护联盟将大熊猫从濒危等级下调为易危；全球大熊猫圈养种群数量达757只，种群结构持续向好。",
-        source: "央视网",
-        image: "./assets/panda1.jpg",
-        url: "https://news.cctv.com/2024/11/29/ARTIN7ede8DmJXya17vgCYto241129.shtml"
-      },
-      {
-        title: "大熊猫：全球物种保护的中国范例",
-        date: "2025年3月23日",
-        description: "中国绿色时报报道，大熊猫作为伞护物种，对整个生态系统保护和周边社区的可持续发展具有举足轻重的作用。大熊猫栖息地生态保护已进入了国家公园时代，栖息地受保护面积从139万公顷增长至258万公顷。",
-        source: "中国绿色时报",
-        image: "./assets/panda2.jpg",
-        url: "https://www.ipanda.com/2025/03/23/ARTIx6mZgJY6UbV3tvfYqDA5250323.shtml"
-      },
-      {
-        title: "外国出生的大熊猫加入中国野生种群恢复计划",
-        date: "2024年6月16日",
-        description: "在外国出生的大熊猫如美国出生的贝贝正在适应中国的新生活，它们将加入中国大熊猫繁育项目，有助于拯救这一物种免于灭绝。中国大熊猫保护研究中心首席专家张和民表示，他们的工作非常紧迫，需要用圈养大熊猫来补充野生种群。",
-        source: "Phys.org",
-        image: "./assets/panda3.jpg",
-        url: "https://phys.org/news/2024-06-foreign-born-pandas-china-efforts.html"
-      },
-      {
-        title: "中国野生大熊猫数量接近1900只",
-        date: "2024年1月25日",
-        description: "国家林业和草原局表示，中国野生大熊猫数量目前约为1900只，相比上世纪80年代的约1100只有了显著增长。2021年10月成立的大熊猫国家公园覆盖面积超过22,000平方公里，为约72%的野生大熊猫提供了重要保护。",
-        source: "中国政府网",
-        image: "./assets/panda_logo2.png",
-        url: "https://english.www.gov.cn/archive/statistics/202401/25/content_WS65b20287c6d0868f4e8e37be.html"
-      },
-      {
-        title: "成都大熊猫繁育研究基地新添双胞胎熊猫",
-        date: "2024年8月15日",
-        description: "成都大熊猫繁育研究基地成功繁育一对大熊猫双胞胎，为全球大熊猫保护再添喜讯。这对双胞胎目前健康状况良好，体重稳步增加。",
-        source: "成都日报",
-        image: "./assets/panda1.jpg",
-        url: "https://www.panda.org.cn/"
-      },
-      {
-        title: "中国大熊猫国家公园生态廊道建设取得新进展",
-        date: "2024年7月20日",
-        description: "中国大熊猫国家公园生态廊道建设项目已完成70%，该项目旨在连接分散的大熊猫栖息地，促进种群交流，提高大熊猫种群的遗传多样性。",
-        source: "国家林业和草原局",
-        image: "./assets/panda2.jpg",
-        url: "http://www.forestry.gov.cn/"
-      },
-      {
-        title: "大熊猫龙凤胎在美国动物园出生",
-        date: "2024年5月8日",
-        description: "美国华盛顿国家动物园宣布，旅美大熊猫美香成功产下一对龙凤胎，这是美国20年来首次迎来大熊猫双胞胎，这两只幼崽将在3-4岁时返回中国。",
-        source: "美国国家动物园",
-        image: "./assets/panda3.jpg",
-        url: "https://nationalzoo.si.edu/"
-      },
-      {
-        title: "陕西省秦岭地区发现新的野生大熊猫种群",
-        date: "2024年4月12日",
-        description: "科研人员在陕西省秦岭山脉深处发现一个此前未记录的野生大熊猫种群，初步估计约有15-20只个体。这一发现对了解大熊猫分布和保护具有重要意义。",
-        source: "陕西日报",
-        image: "./assets/panda_logo1.png",
-        url: "http://sxrb.sxdaily.com.cn/"
-      },
-      {
-        title: "大熊猫基因组研究揭示适应性进化新机制",
-        date: "2024年3月5日",
-        description: "中国科学院最新研究发现大熊猫基因组中的新适应性进化机制，有助于解释大熊猫如何从肉食性祖先演化为以竹子为食的现代物种，对大熊猫保护工作提供了新视角。",
-        source: "中国科学院",
-        image: "./assets/panda_logo2.png",
-        url: "http://www.cas.cn/"
-      },
-      {
-        title: "大熊猫野化培训取得突破性进展",
-        date: "2024年2月18日",
-        description: "中国大熊猫保护研究中心的野化培训项目取得新进展，已有12只人工繁育的大熊猫成功放归野外，其中10只健康存活并适应了野外环境，为野生种群增添了新鲜血液。",
-        source: "四川日报",
-        image: "./assets/panda_logo3.jpg",
-        url: "https://epaper.scdaily.cn/"
-      },
-      {
-        title: "国际大熊猫保护合作论坛在成都举行",
-        date: "2023年12月5日",
-        description: "来自全球30多个国家的大熊猫保护专家齐聚成都，分享保护经验并讨论未来合作方向。与会专家一致认为，中国大熊猫保护模式为全球濒危物种保护提供了宝贵经验。",
-        source: "人民日报",
-        image: "./assets/panda_logo4.png",
-        url: "http://www.people.com.cn/"
-      },
-      {
-        title: "大熊猫幼崽的竹子消化能力研究取得新发现",
-        date: "2023年11月15日",
-        description: "研究人员发现大熊猫幼崽肠道菌群在6-12月龄时发生关键性变化，这一时期是大熊猫学习消化竹子的关键期。这一发现有助于改进人工圈养大熊猫的饲养方案。",
-        source: "科学技术日报",
-        image: "./assets/panda1.jpg",
-        url: "http://www.stdaily.com/"
-      },
-      {
-        title: "大熊猫国家公园智能监测系统投入使用",
-        date: "2023年10月20日",
-        description: "大熊猫国家公园启用新一代智能监测系统，该系统结合红外相机、声音识别和AI技术，可实时监测野生大熊猫活动，提高保护和研究效率。",
-        source: "新华社",
-        image: "./assets/panda2.jpg",
-        url: "http://www.xinhuanet.com/"
-      },
-      {
-        title: "旅法大熊猫在法国动物园产下幼崽",
-        date: "2023年9月8日",
-        description: "法国博瓦勒动物园的中国大熊猫欢欢成功产下一只雌性幼崽，这是欧洲今年出生的第一只大熊猫幼崽，体重181克，目前母子平安。",
-        source: "法新社",
-        image: "./assets/panda3.jpg",
-        url: "https://www.afp.com/"
-      },
-      {
-        title: "大熊猫栖息地植被恢复工程显成效",
-        date: "2023年8月12日",
-        description: "在经过十年的植被恢复工程后，大熊猫国家公园内的竹林面积增加了15%，多样性提高了20%，为野生大熊猫提供了更优质的食物来源和栖息环境。",
-        source: "生态环境部",
-        image: "./assets/panda_logo1.png",
-        url: "http://www.mee.gov.cn/"
-      },
-      {
-        title: "首部大熊猫全息数字展览在北京开幕",
-        date: "2023年7月1日",
-        description: "北京自然博物馆推出首个大熊猫全息数字展览，通过最新全息投影技术，让观众近距离了解大熊猫的生活习性和保护历程，提高公众的保护意识。",
-        source: "北京日报",
-        image: "./assets/panda_logo2.png",
-        url: "http://www.bjd.com.cn/"
-      },
-      {
-        title: "大熊猫保护研究中心新建繁育实验室投入使用",
-        date: "2023年6月10日",
-        description: "中国大熊猫保护研究中心新建的繁育实验室正式投入使用，该实验室配备了先进的胚胎培养设备和遗传研究设施，将进一步提高大熊猫人工繁育成功率。",
-        source: "四川在线",
-        image: "./assets/panda_logo3.jpg",
-        url: "https://www.scdaily.cn/"
-      },
-      {
-        title: "大熊猫国际保护日活动在全球举行",
-        date: "2023年5月16日",
-        description: "第14届大熊猫国际保护日活动在全球多个城市同步举行，今年的主题是'保护栖息地，共建熊猫家园'，旨在提高全球对大熊猫栖息地保护的重视。",
-        source: "世界自然基金会",
-        image: "./assets/panda_logo4.png",
-        url: "https://www.worldwildlife.org/"
-      },
-      {
-        title: "大熊猫科普绘本《熊猫的一天》出版发行",
-        date: "2023年4月22日",
-        description: "专为青少年读者编写的大熊猫科普绘本《熊猫的一天》正式出版发行，该书通过生动的插图和简明的文字，向青少年介绍大熊猫的日常生活和保护知识。",
-        source: "少年儿童出版社",
-        image: "./assets/panda1.jpg",
-        url: "http://www.ccppg.cn/"
-      },
-      {
-        title: "澳大利亚归还旅澳大熊猫双胞胎",
-        date: "2023年3月15日",
-        description: "在澳大利亚出生的大熊猫双胞胎福妹和福娃在完成四年的澳洲生活后，已安全抵达成都，它们将在中国大熊猫保护研究中心进行适应性训练后加入繁育计划。",
-        source: "澳大利亚广播公司",
-        image: "./assets/panda2.jpg",
-        url: "https://www.abc.net.au/"
-      },
-      {
-        title: "大熊猫雪地活动特征研究取得新进展",
-        date: "2023年2月8日",
-        description: "科研人员对大熊猫在雪地环境中的活动特征进行了为期三年的观察研究，发现大熊猫具有独特的雪地适应能力，包括特殊的行走姿态和觅食策略。",
-        source: "北京林业大学",
-        image: "./assets/panda3.jpg",
-        url: "http://www.bjfu.edu.cn/"
-      },
-      {
-        title: "卧龙自然保护区大熊猫监测网络升级",
-        date: "2023年1月20日",
-        description: "卧龙国家级自然保护区完成了大熊猫监测网络升级工程，新增500台高清红外相机，覆盖面积扩大30%，将为大熊猫野外研究提供更详实的数据支持。",
-        source: "四川省林业和草原局",
-        image: "./assets/panda_logo1.png",
-        url: "http://www.scforestry.gov.cn/"
-      },
-      {
-        title: "全球首个大熊猫人工智能识别系统上线",
-        date: "2022年12月18日",
-        description: "由中国科学院和华为公司联合开发的大熊猫人工智能识别系统正式上线，该系统可通过面部特征准确识别个体大熊猫，识别准确率高达98%。",
-        source: "科技日报",
-        image: "./assets/panda_logo2.png",
-        url: "http://www.stdaily.com/"
-      },
-      {
-        title: "日本归还在日出生的大熊猫香香",
-        date: "2022年11月7日",
-        description: "在日本出生的大熊猫香香结束在东京上野动物园的生活，返回中国四川参加大熊猫保护计划。香香在日本度过了5年时光，深受日本民众喜爱。",
-        source: "日本放送协会",
-        image: "./assets/panda_logo3.jpg",
-        url: "https://www3.nhk.or.jp/"
-      },
-      {
-        title: "大熊猫栖息地古老竹林调查完成",
-        date: "2022年10月15日",
-        description: "历时两年的大熊猫栖息地古老竹林调查工作完成，研究人员发现多处年龄超过60年的原始竹林，这些古老竹林是大熊猫重要的食物来源和栖息场所。",
-        source: "中国科学院",
-        image: "./assets/panda_logo4.png",
-        url: "http://www.cas.cn/"
-      },
-      {
-        title: "中国与新加坡续签大熊猫保护合作协议",
-        date: "2022年9月20日",
-        description: "中国与新加坡签署新一轮为期10年的大熊猫保护合作协议，新加坡将继续饲养大熊猫凯凯和嘉嘉，并加强在大熊猫繁育和保护研究方面的合作。",
-        source: "新加坡环境部",
-        image: "./assets/panda1.jpg",
-        url: "https://www.mse.gov.sg/"
-      },
-      {
-        title: "大熊猫主食竹子种植技术取得重大突破",
-        date: "2022年8月5日",
-        description: "中国林业科学研究院研发出新型箭竹快速培育技术，可将箭竹生长周期缩短30%，这一技术将有效解决大熊猫食物短缺问题。",
-        source: "中国林业科学研究院",
-        image: "./assets/panda2.jpg",
-        url: "http://www.caf.ac.cn/"
-      },
-      {
-        title: "中国在联合国生物多样性大会分享大熊猫保护经验",
-        date: "2022年7月12日",
-        description: "在联合国第15届生物多样性大会上，中国代表团分享了大熊猫保护的成功经验，引起广泛关注。与会专家认为，中国大熊猫保护模式为全球濒危物种保护提供了宝贵借鉴。",
-        source: "联合国环境规划署",
-        image: "./assets/panda3.jpg",
-        url: "https://www.unep.org/"
-      },
-      {
-        title: "大熊猫爱情物语：配对成功率创新高",
-        date: "2022年6月1日",
-        description: "2022年大熊猫繁殖季节已经结束，全国各大熊猫基地报告配对成功率达到历史新高，约65%的适龄大熊猫成功配对，预计今年将迎来大熊猫幼崽出生高峰。",
-        source: "动物世界杂志",
-        image: "./assets/panda_logo1.png",
-        url: "http://www.ziran.com.cn/"
-      },
-      {
-        title: "大熊猫与象征和平的使者：50年外交历程回顾",
-        date: "2022年5月10日",
-        description: "自1972年中国向美国赠送大熊猫以来，大熊猫已成为中国与世界友好交往的重要使者。本文回顾了50年来大熊猫在促进国际友谊和保护合作方面的重要作用。",
-        source: "外交评论",
-        image: "./assets/panda_logo2.png",
-        url: "http://www.faobserver.com/"
-      }
-    ];
-
-    // 处理所有新闻数据，为每个新闻来源生成logo
+    // 如果有缓存且未过期，直接返回缓存数据
+    if (cachedNews && cachedNews.data && cachedNews.data.length > 0 && !isCacheExpired(cachedNews.timestamp)) {
+      console.log('使用缓存的熊猫新闻数据，缓存时间:', new Date(cachedNews.timestamp).toLocaleString());
+      return cachedNews.data;
+    }
+    
+    // 如果没有缓存或缓存已过期，获取新数据
+    console.log('缓存不存在或已过期，获取新数据');
+    
+    // 准备备用数据（预设的新闻数据）
+    const realPandaNews = formatDefaultNews();
+    
+    // 初始化处理后的新闻列表
+    let processedNews = [];
+    
+    // 尝试从通义千问API获取新闻（设置超时，避免长时间等待）
+    let tongyiNews = null;
+    try {
+      // 创建一个带超时的Promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('API请求超时')), 5000); // 5秒超时
+      });
+      
+      // 与API请求Promise竞争
+      tongyiNews = await Promise.race([
+        fetchPandaNewsFromTongyi(),
+        timeoutPromise
+      ]);
+    } catch (error) {
+      console.warn('获取通义千问API数据失败或超时:', error.message);
+      // 超时或失败时继续使用备用数据
+    }
+    
+    // 合并新闻数据
     let allNews = [];
     
     // 如果API返回了有效的新闻，合并结果
@@ -1210,33 +974,55 @@ async function getLatestPandaNews() {
       allNews = [...realPandaNews];
     }
     
-    // 为每条新闻添加来源logo和相关图片
-    const processedNews = [];
-    for (const news of allNews) {
+    // 为每条新闻添加来源logo和相关图片（使用Promise.all并行处理）
+    const newsPromises = allNews.map(async (news) => {
       // 确保新闻有必要字段
-      if (!news.title || !news.description) continue;
+      if (!news.title || !news.description) return null;
       
-      // 获取新闻来源logo
-      const sourceLogo = await generateSourceLogo(news.source);
+      try {
+        // 生成与新闻内容相关的图片
+        const newsImage = await generateNewsImage(news.title, news.description);
       
-      // 生成与新闻内容相关的图片
-      const newsImage = await generateNewsImage(news.title, news.description);
-      
-      // 添加到处理后的新闻列表
-      processedNews.push({
-        ...news,
-        sourceLogo: sourceLogo,
-        image: news.image || newsImage // 如果新闻已有图片则保留，否则使用生成的图片
-      });
+        // 返回处理后的新闻
+        return {
+          ...news,
+          image: news.image || newsImage // 如果新闻已有图片则保留，否则使用生成的图片
+        };
+      } catch (error) {
+        console.error(`处理新闻 "${news.title}" 失败:`, error);
+        return null;
+      }
+    });
+    
+    // 等待所有新闻处理完成
+    const results = await Promise.all(newsPromises);
+    
+    // 过滤掉处理失败的新闻
+    processedNews = results.filter(news => news !== null);
       
       // 最多处理30条新闻
-      if (processedNews.length >= 30) break;
+    if (processedNews.length > 30) {
+      processedNews = processedNews.slice(0, 30);
     }
     
     // 随机打乱新闻顺序，以便每次显示不同的排序
-    return processedNews.sort(() => Math.random() - 0.5).slice(0, 30);
+    processedNews = processedNews.sort(() => Math.random() - 0.5);
+    
+    // 保存到缓存
+    saveNewsToCache(processedNews);
+    
+    return processedNews;
   } catch (error) {
     console.error('获取熊猫新闻失败:', error);
+    
+    // 如果处理过程中出错，尝试从缓存加载
+    const cachedNews = loadNewsFromCache();
+    if (cachedNews && cachedNews.data && cachedNews.data.length > 0) {
+      console.log('出错后使用缓存的熊猫新闻数据');
+      return cachedNews.data;
+    }
+    
+    // 如果缓存也不可用，返回默认数据
     return formatDefaultNews();
   }
 }
@@ -1698,9 +1484,79 @@ async function getPandaLocations() {
   }
 }
 
+// 从缓存加载新闻数据
+function loadNewsFromCache() {
+  try {
+    if (fs.existsSync(NEWS_CACHE_FILE)) {
+      const cacheContent = fs.readFileSync(NEWS_CACHE_FILE, 'utf8');
+      return JSON.parse(cacheContent);
+    }
+  } catch (error) {
+    console.error('读取新闻缓存失败:', error);
+  }
+  return null;
+}
+
+// 保存新闻数据到缓存
+function saveNewsToCache(newsData) {
+  try {
+    const cacheData = {
+      timestamp: Date.now(),
+      data: newsData
+    };
+    fs.writeFileSync(NEWS_CACHE_FILE, JSON.stringify(cacheData, null, 2), 'utf8');
+    console.log('新闻数据已保存到缓存');
+  } catch (error) {
+    console.error('保存新闻缓存失败:', error);
+  }
+}
+
+// 检查缓存是否过期
+function isCacheExpired(timestamp) {
+  return Date.now() - timestamp > NEWS_CACHE_EXPIRY;
+}
+
+// 获取最新熊猫新闻（轻量版，用于快速加载）
+async function getLatestPandaNewsLite() {
+  try {
+    // 首先尝试从缓存加载
+    const cachedNews = loadNewsFromCache();
+    
+    // 如果有缓存，直接返回（不管是否过期）
+    if (cachedNews && cachedNews.data && cachedNews.data.length > 0) {
+      console.log('使用缓存的熊猫新闻数据（轻量版）');
+      
+      // 在后台更新缓存（如果已过期）
+      if (isCacheExpired(cachedNews.timestamp)) {
+        console.log('缓存已过期，在后台更新');
+        setTimeout(() => {
+          getLatestPandaNews().catch(err => console.error('后台更新新闻缓存失败:', err));
+        }, 100);
+      }
+      
+      return cachedNews.data;
+    }
+    
+    // 如果没有缓存，返回默认数据并在后台获取新数据
+    console.log('缓存不存在，返回默认数据并在后台更新');
+    const defaultNews = formatDefaultNews();
+    
+    // 在后台获取新数据
+    setTimeout(() => {
+      getLatestPandaNews().catch(err => console.error('后台获取新闻数据失败:', err));
+    }, 100);
+    
+    return defaultNews;
+  } catch (error) {
+    console.error('获取轻量版熊猫新闻失败:', error);
+    return formatDefaultNews();
+  }
+}
+
 // 导出API函数
 module.exports = {
   getLatestPandaNews,
+  getLatestPandaNewsLite, // 添加轻量版API
   getPandaKnowledge,
   getPandaLiveInfo,
   getPandaLocations,

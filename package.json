@@ -1,7 +1,7 @@
 {
   "name": "chuanpanda",
   "productName": "川小熊猫",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "全球熊猫动态查看器",
   "main": "main.js",
   "bin": "app.js",
@@ -9,6 +9,10 @@
     "start": "electron .",
     "start:node": "node app.js",
     "build": "pkg . --targets node18-win-x64 --output 川小熊猫.exe",
+    "pack": "electron-builder --dir",
+    "dist:portable": "electron-builder --win portable",
+    "dist:installer": "electron-builder",
+    "dist:all": "electron-builder -w",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -17,8 +21,8 @@
     "监控",
     "知识"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "fayufm",
+  "license": "MIT",
   "pkg": {
     "assets": [
       "index.html",
@@ -34,13 +38,53 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
     "win": {
-      "target": "nsis",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "42-ico.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "川小熊猫",
+      "artifactName": "川小熊猫安装版-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "川小熊猫便携版-${version}.${ext}"
     }
   },
   "devDependencies": {
+    "brace-expansion": "^2.0.1",
     "electron": "^36.4.0",
+    "electron-builder": "^23.6.0",
     "electron-is-dev": "^3.0.1"
   }
 }

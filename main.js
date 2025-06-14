@@ -108,6 +108,16 @@ ipcMain.handle('get-panda-news', async () => {
   }
 });
 
+// 设置IPC通信处理轻量版API请求
+ipcMain.handle('get-panda-news-lite', async () => {
+  try {
+    return await pandaAPI.getLatestPandaNewsLite();
+  } catch (error) {
+    console.error('获取轻量版熊猫新闻失败:', error);
+    return null;
+  }
+});
+
 ipcMain.handle('get-panda-knowledge', async () => {
   try {
     return await pandaAPI.getPandaKnowledge();
