@@ -800,22 +800,19 @@ body, html {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 8px 15px;
   border: 2px solid #ddd;
   border-radius: 30px;
   background-color: white;
   cursor: pointer;
   transition: all 0.3s;
-  font-size: calc(var(--font-size-base) * 16);
+  font-size: calc(var(--font-size-base) * 0.9);
   color: var(--text-color);
   font-weight: 500;
 }
 
 .translation-button img {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
+  display: none;
 }
 
 .translation-button:hover {
@@ -2884,6 +2881,41 @@ body.theme-dark .map-retry-button:hover {
 /* 熊猫动态页面样式 */
 .news-page {
   padding: 20px;
+}
+
+/* 社区链接样式 */
+.community-link-container {
+  margin: 30px auto;
+  text-align: center;
+}
+
+.community-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  background-color: #4285f4;
+  color: white;
+  text-decoration: none;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.community-link:hover {
+  background-color: #3367d6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.community-logo {
+  width: 24px;
+  height: 24px;
+  margin-right: 10px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .news-container {

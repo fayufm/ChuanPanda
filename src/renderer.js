@@ -494,6 +494,16 @@ function renderPandaNews(container) {
     `;
   }
   
+  // 添加社区链接
+  newsHtml += `
+    <div class="community-link-container">
+      <a href="https://xieshuoxing.vip" class="community-link" onclick="openExternalLink('https://xieshuoxing.vip'); return false;">
+        <img src="./assets/39.png" class="community-logo" alt="社区logo">
+        <span class="community-text">访问川小熊猫社区</span>
+      </a>
+    </div>
+  `;
+  
   // 首次加载时关闭页面容器
   if (startIndex === 0) {
     newsHtml += `
@@ -817,15 +827,12 @@ async function loadPandaKnowledge() {
         <p>选择以下语言查看熊猫知识的翻译版本：</p>
         <div class="translation-buttons">
           <button id="translate-en" class="translation-button">
-            <img src="./assets/panda_logo1.png" alt="English" style="width:24px; height:24px;">
             English
           </button>
           <button id="translate-ru" class="translation-button">
-            <img src="./assets/panda_logo2.png" alt="Русский" style="width:24px; height:24px;">
             Русский
           </button>
           <button id="translate-zh" class="translation-button active">
-            <img src="./assets/panda_logo3.jpg" alt="中文" style="width:24px; height:24px;">
             中文
           </button>
         </div>
@@ -911,6 +918,350 @@ function translateKnowledgePage(language) {
   const paragraphElements = document.querySelectorAll('.knowledge-section p');
   const listItemElements = document.querySelectorAll('.knowledge-section li');
   const pageTitle = document.querySelector('.knowledge-page h2');
+  const h4Elements = document.querySelectorAll('.knowledge-section h4');
+  
+  // 保存和恢复原始内容的数据对象
+  const originalContent = window.knowledgeOriginalContent = window.knowledgeOriginalContent || {
+    titles: {},
+    paragraphs: {},
+    listItems: {},
+    h4Titles: {},
+    pageTitle: pageTitle ? pageTitle.textContent : ''
+  };
+  
+  // 使用语言转换处理ol和ul列表中的内容
+  // 首次运行时，保存原始内容
+  if (!window.knowledgeOriginalContent.saved) {
+    // 保存标题原始内容
+    titleElements.forEach(el => {
+      if (el.id) window.knowledgeOriginalContent.titles[el.id] = el.textContent;
+    });
+    
+    // 保存所有段落的原始内容
+    const sections = document.querySelectorAll('.knowledge-section');
+    sections.forEach(section => {
+      if (section.id) {
+        const paragraphs = section.querySelectorAll('p');
+        paragraphs.forEach((p, i) => {
+          window.knowledgeOriginalContent.paragraphs[`${section.id}:${i}`] = p.textContent;
+        });
+        
+        const listItems = section.querySelectorAll('li');
+        listItems.forEach((li, i) => {
+          window.knowledgeOriginalContent.listItems[`${section.id}:${i}`] = li.innerHTML;
+        });
+        
+        const h4s = section.querySelectorAll('h4');
+        h4s.forEach((h4, i) => {
+          window.knowledgeOriginalContent.h4Titles[`${section.id}:${i}`] = h4.textContent;
+        });
+      }
+    });
+    
+    window.knowledgeOriginalContent.saved = true;
+  }
+  
+  if (language === 'en') {
+    // 处理保护现状的列表标题
+    let conservationTitles = document.querySelectorAll('#conservation p');
+    for (let el of conservationTitles) {
+      if (el.textContent.includes('中国政府实施的保护措施包括')) {
+        el.textContent = 'Conservation measures implemented by the Chinese government include:';
+      } else if (el.textContent.includes('面临的主要威胁')) {
+        el.textContent = 'Main threats faced:';
+      }
+    }
+
+    // 处理研究成就的列表标题
+    let researchTitles = document.querySelectorAll('#research p');
+    for (let el of researchTitles) {
+      if (el.textContent.includes('大熊猫研究在近几十年取得了显著进展')) {
+        el.textContent = 'Giant panda research has made significant progress in recent decades:';
+      }
+    }
+    
+    // 翻译历史记载与文化渊源部分
+    const cultureHeadings = document.querySelectorAll('#panda-culture h4');
+    for (let heading of cultureHeadings) {
+      if (heading.textContent === '历史记载与文化渊源') {
+        heading.textContent = 'Historical Records and Cultural Origins';
+      } else if (heading.textContent === '文学艺术中的熊猫形象') {
+        heading.textContent = 'Pandas in Literature and Art';
+      }
+    }
+    
+    // 翻译大熊猫的分类与进化部分
+    const scienceHeadings = document.querySelectorAll('#panda-science h4');
+    for (let heading of scienceHeadings) {
+      if (heading.textContent === '大熊猫的分类与进化') {
+        heading.textContent = 'Classification and Evolution of Giant Pandas';
+      } else if (heading.textContent === '有趣的熊猫科学事实') {
+        heading.textContent = 'Interesting Panda Scientific Facts';
+      } else if (heading.textContent === '熊猫的生态习性与行为学') {
+        heading.textContent = 'Habits and Behavior of Pandas';
+      }
+    }
+    
+    // 确保保护状态部分的ol和ul列表项也被翻译
+    let conservationListItems = document.querySelectorAll('#conservation li');
+    conservationListItems.forEach(item => {
+      let strongTag = item.querySelector('strong');
+      let text = item.textContent;
+      
+      if (text.includes('中国建立了67个自然保护区')) {
+        item.innerHTML = strongTag.outerHTML + 'China has established 67 nature reserves with a total area of more than 1,300,000 hectares, protecting about 54% of the giant panda habitat and covering about 67% of the wild giant panda population.';
+      } else if (text.includes('2021年10月，中国大熊猫国家公园正式设立')) {
+        item.innerHTML = strongTag.outerHTML + 'In October 2021, the China Giant Panda National Park was officially established, covering an area of 27,134 square kilometers, accounting for about 70% of the giant panda\'s natural habitat, integrating giant panda reserves in 3 provinces.';
+      } else if (text.includes('通过建设生态廊道连接分散的大熊猫栖息地')) {
+        item.innerHTML = strongTag.outerHTML + 'By building ecological corridors to connect scattered giant panda habitats, population exchange is promoted, increasing genetic diversity.';
+      } else if (text.includes('中国大熊猫保护研究中心等机构在大熊猫繁育')) {
+        item.innerHTML = strongTag.outerHTML + 'Institutions such as the China Conservation and Research Center for the Giant Panda have made major breakthroughs in giant panda breeding, disease prevention and control, and wild training, with the number of captive giant pandas exceeding 600.';
+      } else if (text.includes('中国与多个国家和国际组织开展大熊猫保护合作')) {
+        item.innerHTML = strongTag.outerHTML + 'China cooperates with multiple countries and international organizations on giant panda conservation, conducting scientific research and public education.';
+      } else if (text.includes('栖息地破碎化')) {
+        item.innerHTML = 'Habitat fragmentation: Construction of roads, hydropower stations, etc. divides giant panda habitats into isolated small areas, hindering gene exchange.';
+      } else if (text.includes('气候变化')) {
+        item.innerHTML = 'Climate change: Global warming may change the flowering cycle of bamboo, the main food of giant pandas, affecting food supply.';
+      } else if (text.includes('竹子开花枯死')) {
+        item.innerHTML = 'Bamboo flowering and death: Bamboo dies completely after flowering, and it takes several years to regrow, which has caused giant pandas to starve to death in the past.';
+      } else if (text.includes('人类活动干扰')) {
+        item.innerHTML = 'Human activity disturbance: Tourism, collection, and other activities may disturb the normal life of giant pandas.';
+      }
+    });
+    
+    // 确保研究成就部分的列表项也被翻译
+    let researchListItems = document.querySelectorAll('#research li');
+    researchListItems.forEach(item => {
+      let strongTag = item.querySelector('strong');
+      let text = item.textContent;
+      
+      if (text.includes('2010年，科学家完成了大熊猫全基因组测序')) {
+        item.innerHTML = strongTag.outerHTML + 'In 2010, scientists completed the giant panda genome sequencing, providing an important basis for studying the evolutionary history and conservation of giant pandas.';
+      } else if (text.includes('中国科学家攻克了大熊猫人工繁育难题')) {
+        item.innerHTML = strongTag.outerHTML + 'Chinese scientists have overcome the challenges of artificial breeding of giant pandas, increasing the success rate from about 30% in the early stages to over 90% now.';
+      } else if (text.includes('截至2023年，中国已有超过25只人工繁育的大熊猫成功放归野外')) {
+        item.innerHTML = strongTag.outerHTML + 'As of 2023, China has successfully released more than 25 captive-bred giant pandas into the wild, many of which have successfully produced offspring.';
+      } else if (text.includes('通过红外相机监测等技术，科学家对野生大熊猫的行为习性有了更深入的了解')) {
+        item.innerHTML = strongTag.outerHTML + 'Through technologies such as infrared camera monitoring, scientists have gained a deeper understanding of the behavioral patterns of wild giant pandas.';
+      } else if (text.includes('研究人员已经识别并能够有效治疗大熊猫常见疾病')) {
+        item.innerHTML = strongTag.outerHTML + 'Researchers have identified and can effectively treat common giant panda diseases, significantly reducing mortality rates.';
+      }
+    });
+  } else if (language === 'ru') {
+    // 处理保护现状的列表标题
+    let conservationTitles = document.querySelectorAll('#conservation p');
+    for (let el of conservationTitles) {
+      if (el.textContent.includes('中国政府实施的保护措施包括') || el.textContent.includes('Conservation measures implemented')) {
+        el.textContent = 'Меры по сохранению, реализуемые правительством Китая, включают:';
+      } else if (el.textContent.includes('面临的主要威胁') || el.textContent.includes('Main threats faced')) {
+        el.textContent = 'Основные угрозы:';
+      }
+    }
+
+    // 处理研究成就的列表标题
+    let researchTitles = document.querySelectorAll('#research p');
+    for (let el of researchTitles) {
+      if (el.textContent.includes('大熊猫研究在近几十年取得了显著进展') || el.textContent.includes('Giant panda research has made significant progress')) {
+        el.textContent = 'Исследования панд добились значительного прогресса в последние десятилетия:';
+      }
+    }
+    
+    // 翻译历史记载与文化渊源部分
+    const cultureHeadings = document.querySelectorAll('#panda-culture h4');
+    for (let heading of cultureHeadings) {
+      if (heading.textContent.includes('历史记载与文化渊源') || heading.textContent.includes('Historical Records')) {
+        heading.textContent = 'Исторические записи и культурные истоки';
+      } else if (heading.textContent.includes('文学艺术中的熊猫形象') || heading.textContent.includes('Pandas in Literature')) {
+        heading.textContent = 'Панды в литературе и искусстве';
+      }
+    }
+    
+    // 翻译大熊猫的分类与进化部分
+    const scienceHeadings = document.querySelectorAll('#panda-science h4');
+    for (let heading of scienceHeadings) {
+      if (heading.textContent.includes('大熊猫的分类与进化') || heading.textContent.includes('Classification and Evolution')) {
+        heading.textContent = 'Классификация и эволюция гигантских панд';
+      } else if (heading.textContent.includes('有趣的熊猫科学事实') || heading.textContent.includes('Interesting Panda')) {
+        heading.textContent = 'Интересные научные факты о пандах';
+      } else if (heading.textContent.includes('熊猫的生态习性与行为学') || heading.textContent.includes('Habits and Behavior')) {
+        heading.textContent = 'Привычки и поведение панд';
+      }
+    }
+    
+    // 确保保护状态部分的ol和ul列表项也被翻译成俄文
+    let conservationListItems = document.querySelectorAll('#conservation li');
+    conservationListItems.forEach(item => {
+      let strongTag = item.querySelector('strong');
+      let text = item.textContent;
+      
+      if (text.includes('中国建立了67个自然保护区') || text.includes('China has established 67 nature reserves')) {
+        item.innerHTML = strongTag.outerHTML + 'Китай создал 67 природных заповедников общей площадью более 1 300 000 гектаров, защищая около 54% среды обитания панд и охватывая около 67% популяции диких панд.';
+      } else if (text.includes('2021年10月，中国大熊猫国家公园正式设立') || text.includes('In October 2021, the China Giant Panda National Park')) {
+        item.innerHTML = strongTag.outerHTML + 'В октябре 2021 года был официально создан Национальный парк больших панд Китая площадью 27 134 квадратных километров, что составляет около 70% естественной среды обитания панд, объединяющий заповедники панд в 3 провинциях.';
+      } else if (text.includes('通过建设生态廊道连接分散的大熊猫栖息地') || text.includes('By building ecological corridors')) {
+        item.innerHTML = strongTag.outerHTML + 'Путем строительства экологических коридоров для соединения разрозненных мест обитания панд, способствуя обмену популяций и увеличивая генетическое разнообразие.';
+      } else if (text.includes('中国大熊猫保护研究中心等机构在大熊猫繁育') || text.includes('Institutions such as the China Conservation')) {
+        item.innerHTML = strongTag.outerHTML + 'Такие учреждения, как Китайский центр сохранения и исследования большой панды, добились значительных прорывов в разведении панд, профилактике и контроле заболеваний и обучении дикой природе, при этом количество панд в неволе превышает 600.';
+      } else if (text.includes('中国与多个国家和国际组织开展大熊猫保护合作') || text.includes('China cooperates with multiple countries')) {
+        item.innerHTML = strongTag.outerHTML + 'Китай сотрудничает с несколькими странами и международными организациями по сохранению больших панд, проводя научные исследования и просвещение общественности.';
+      } else if (text.includes('栖息地破碎化') || text.includes('Habitat fragmentation')) {
+        item.innerHTML = 'Фрагментация среды обитания: Строительство дорог, гидроэлектростанций и т.д. разделяет среду обитания панд на изолированные небольшие территории, препятствуя обмену генами.';
+      } else if (text.includes('气候变化') || text.includes('Climate change')) {
+        item.innerHTML = 'Изменение климата: Глобальное потепление может изменить цикл цветения бамбука, основной пищи больших панд, влияя на снабжение продовольствием.';
+      } else if (text.includes('竹子开花枯死') || text.includes('Bamboo flowering and death')) {
+        item.innerHTML = 'Цветение и отмирание бамбука: Бамбук полностью отмирает после цветения, и для его восстановления требуется несколько лет, что в прошлом приводило к смерти панд от голода.';
+      } else if (text.includes('人类活动干扰') || text.includes('Human activity disturbance')) {
+        item.innerHTML = 'Нарушение человеческой деятельностью: Туризм, сбор и другие виды деятельности могут нарушать нормальную жизнь больших панд.';
+      }
+    });
+    
+    // 确保研究成就部分的列表项也被翻译成俄文
+    let researchListItems = document.querySelectorAll('#research li');
+    researchListItems.forEach(item => {
+      let strongTag = item.querySelector('strong');
+      let text = item.textContent;
+      
+      if (text.includes('2010年，科学家完成了大熊猫全基因组测序') || text.includes('In 2010, scientists completed')) {
+        item.innerHTML = strongTag.outerHTML + 'В 2010 году ученые завершили секвенирование генома гигантской панды, что обеспечило важную основу для изучения эволюционной истории и сохранения гигантских панд.';
+      } else if (text.includes('中国科学家攻克了大熊猫人工繁育难题') || text.includes('Chinese scientists have overcome')) {
+        item.innerHTML = strongTag.outerHTML + 'Китайские ученые преодолели проблемы искусственного разведения гигантских панд, увеличив показатель успеха с примерно 30% на ранних этапах до более чем 90% в настоящее время.';
+      } else if (text.includes('截至2023年，中国已有超过25只人工繁育的大熊猫成功放归野外') || text.includes('As of 2023, China has successfully released')) {
+        item.innerHTML = strongTag.outerHTML + 'По состоянию на 2023 год Китай успешно выпустил в дикую природу более 25 выращенных в неволе гигантских панд, многие из которых успешно произвели потомство.';
+      } else if (text.includes('通过红外相机监测等技术，科学家对野生大熊猫的行为习性有了更深入的了解') || text.includes('Through technologies such as infrared camera')) {
+        item.innerHTML = strongTag.outerHTML + 'С помощью таких технологий, как мониторинг инфракрасной камерой, ученые получили более глубокое понимание поведенческих моделей диких гигантских панд.';
+      } else if (text.includes('研究人员已经识别并能够有效治疗大熊猫常见疾病') || text.includes('Researchers have identified and can effectively')) {
+        item.innerHTML = strongTag.outerHTML + 'Исследователи идентифицировали и могут эффективно лечить распространенные заболевания гигантской панды, значительно снижая уровень смертности.';
+      }
+    });
+  } else if (language === 'zh') {
+    // 恢复中文原文内容
+    
+    // 使用保存的原始内容恢复
+    if (window.knowledgeOriginalContent) {
+      // 恢复标题
+      for (let id in window.knowledgeOriginalContent.titles) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = window.knowledgeOriginalContent.titles[id];
+      }
+      
+      // 恢复段落
+      for (let key in window.knowledgeOriginalContent.paragraphs) {
+        const selector = key.split(':');
+        const parentId = selector[0];
+        const index = parseInt(selector[1]);
+        const parent = document.getElementById(parentId);
+        if (parent) {
+          const paragraphs = parent.querySelectorAll('p');
+          if (paragraphs[index]) paragraphs[index].textContent = window.knowledgeOriginalContent.paragraphs[key];
+        }
+      }
+      
+      // 恢复列表项
+      for (let key in window.knowledgeOriginalContent.listItems) {
+        const parts = key.split(':');
+        const parent = document.getElementById(parts[0]);
+        if (parent) {
+          const items = parent.querySelectorAll('li');
+          const index = parseInt(parts[1]);
+          if (items[index]) items[index].innerHTML = window.knowledgeOriginalContent.listItems[key];
+        }
+      }
+      
+      // 恢复h4标题
+      for (let key in window.knowledgeOriginalContent.h4Titles) {
+        const parts = key.split(':');
+        const parent = document.getElementById(parts[0]);
+        if (parent) {
+          const headings = parent.querySelectorAll('h4');
+          const index = parseInt(parts[1]);
+          if (headings[index]) headings[index].textContent = window.knowledgeOriginalContent.h4Titles[key];
+        }
+      }
+    } else {
+      // 如果没有保存的原始内容，执行旧的恢复方法
+      let conservationTitles = document.querySelectorAll('#conservation p');
+      for (let el of conservationTitles) {
+        if (el.textContent.includes('Conservation measures implemented') || el.textContent.includes('Меры по сохранению')) {
+          el.textContent = '中国政府实施的保护措施包括：';
+        } else if (el.textContent.includes('Main threats faced') || el.textContent.includes('Основные угрозы')) {
+          el.textContent = '面临的主要威胁：';
+        }
+      }
+
+      let researchTitles = document.querySelectorAll('#research p');
+      for (let el of researchTitles) {
+        if (el.textContent.includes('Giant panda research has made significant') || el.textContent.includes('Исследования панд добились значительного')) {
+          el.textContent = '大熊猫研究在近几十年取得了显著进展：';
+        }
+      }
+      
+      // 恢复特定的小节标题
+      const cultureHeadings = document.querySelectorAll('#panda-culture h4');
+      for (let heading of cultureHeadings) {
+        if (heading.textContent.includes('Historical Records') || heading.textContent.includes('Исторические записи')) {
+          heading.textContent = '历史记载与文化渊源';
+        } else if (heading.textContent.includes('Pandas in Literature') || heading.textContent.includes('Панды в литературе')) {
+          heading.textContent = '文学艺术中的熊猫形象';
+        }
+      }
+      
+      const scienceHeadings = document.querySelectorAll('#panda-science h4');
+      for (let heading of scienceHeadings) {
+        if (heading.textContent.includes('Classification and Evolution') || heading.textContent.includes('Классификация и эволюция')) {
+          heading.textContent = '大熊猫的分类与进化';
+        } else if (heading.textContent.includes('Interesting Facts') || heading.textContent.includes('Интересные факты')) {
+          heading.textContent = '有趣的熊猫科学事实';
+        } else if (heading.textContent.includes('Habits and Behavior') || heading.textContent.includes('Привычки и поведение')) {
+          heading.textContent = '熊猫的生态习性与行为学'; 
+        }
+      }
+
+      // 恢复保护状态部分的ol和ul列表项到中文版本
+      let conservationListItems = document.querySelectorAll('#conservation li');
+    }
+    conservationListItems.forEach(item => {
+      let strongTag = item.querySelector('strong');
+      let text = item.textContent;
+      
+      if (text.includes('China has established 67 nature reserves') || text.includes('Китай создал 67 природных заповедников')) {
+        item.innerHTML = '<strong>栖息地保护：</strong>中国建立了67个自然保护区，总面积超过1,300,000公顷，保护了约54%的大熊猫栖息地，覆盖了约67%的野生大熊猫种群。';
+      } else if (text.includes('In October 2021, the China Giant Panda National Park') || text.includes('В октябре 2021 года был официально создан')) {
+        item.innerHTML = '<strong>国家公园建设：</strong>2021年10月，中国大熊猫国家公园正式设立，面积27,134平方公里，占大熊猫自然栖息地的大约70%，整合了3个省份的大熊猫保护区。';
+      } else if (text.includes('By building ecological corridors') || text.includes('Путем строительства экологических коридоров')) {
+        item.innerHTML = '<strong>生态廊道建设：</strong>通过建设生态廊道连接分散的大熊猫栖息地，促进种群交流，提高遗传多样性。';
+      } else if (text.includes('Institutions such as the China Conservation') || text.includes('Такие учреждения, как Китайский центр сохранения')) {
+        item.innerHTML = '<strong>科研繁育：</strong>中国大熊猫保护研究中心等机构在大熊猫繁育、疾病防控、野化培训等领域取得重大突破，圈养大熊猫数量已超过600只。';
+      } else if (text.includes('China cooperates with multiple countries') || text.includes('Китай сотрудничает с несколькими странами')) {
+        item.innerHTML = '<strong>国际合作：</strong>中国与多个国家和国际组织开展大熊猫保护合作，进行科学研究和公众教育。';
+      } else if (text.includes('Habitat fragmentation') || text.includes('Фрагментация среды обитания')) {
+        item.innerHTML = '栖息地破碎化：公路、水电站等建设将大熊猫栖息地分割成孤立的小区域，阻碍基因交流。';
+      } else if (text.includes('Climate change') || text.includes('Изменение климата')) {
+        item.innerHTML = '气候变化：全球气候变暖可能导致大熊猫主食竹子的开花周期改变，影响食物供应。';
+      } else if (text.includes('Bamboo flowering and death') || text.includes('Цветение и отмирание бамбука')) {
+        item.innerHTML = '竹子开花枯死：竹子在开花后会全面枯死，重新生长需要数年时间，曾导致大熊猫饥饿死亡。';
+      } else if (text.includes('Human activity disturbance') || text.includes('Нарушение человеческой деятельностью')) {
+        item.innerHTML = '人类活动干扰：旅游、采集等活动可能打扰大熊猫的正常生活。';
+      }
+    });
+    
+    // 恢复研究成就部分的列表项到中文版本
+    let researchListItems = document.querySelectorAll('#research li');
+    researchListItems.forEach(item => {
+      let text = item.textContent;
+      
+      if (text.includes('In 2010, scientists completed') || text.includes('В 2010 году ученые завершили')) {
+        item.innerHTML = '<strong>基因组测序：</strong>2010年，科学家完成了大熊猫全基因组测序，为研究大熊猫进化历史和保护提供了重要依据。';
+      } else if (text.includes('Chinese scientists have overcome') || text.includes('Китайские ученые преодолели')) {
+        item.innerHTML = '<strong>人工繁育技术：</strong>中国科学家攻克了大熊猫人工繁育难题，成功率从早期的30%提高到现在的90%以上。';
+      } else if (text.includes('As of 2023, China has successfully released') || text.includes('По состоянию на 2023 год Китай успешно выпустил')) {
+        item.innerHTML = '<strong>野化放归：</strong>截至2023年，中国已有超过25只人工繁育的大熊猫成功放归野外，其中多只已成功繁育后代。';
+      } else if (text.includes('Through technologies such as infrared camera') || text.includes('С помощью таких технологий, как мониторинг')) {
+        item.innerHTML = '<strong>行为学研究：</strong>通过红外相机监测等技术，科学家对野生大熊猫的行为习性有了更深入的了解。';
+      } else if (text.includes('Researchers have identified and can effectively') || text.includes('Исследователи идентифицировали и могут эффективно')) {
+        item.innerHTML = '<strong>疾病防控：</strong>研究人员已经识别并能够有效治疗大熊猫常见疾病，显著降低了死亡率。';
+      }
+    });
+  }
   
   // 根据选择的语言进行翻译
   if (language === 'en') {
