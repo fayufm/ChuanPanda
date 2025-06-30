@@ -34,4 +34,10 @@ Thumbs.db
 
 # 忽略临时文件
 *.tmp
-*.bak 
+*.bak
+
+# 忽略缓存文件
+assets/cache/news_cache.json
+
+# 忽略安装包
+*.exe 
